@@ -6,9 +6,7 @@ import settingsDefaults from '../../data/defaults/settings.json';
 import {
   appSettingsSchema,
   cartItemSchema,
-  catalogDataSchema,
   categorySchema,
-  createOrderInputSchema,
   orderSchema,
   paymentSettingsSchema,
   productSchema,
@@ -18,7 +16,6 @@ import {
   createCartItem,
   createCategory,
   createOrder,
-  createOrderInput,
   createPaymentSettings,
   createProduct,
 } from '../test/fixtures';
@@ -46,13 +43,6 @@ describe('catalog contracts', () => {
   ])('rejects a product with %s', (_label, replacement) => {
     expect(() => productSchema.parse({ ...validProduct, ...replacement })).toThrow();
   });
-
-  it('validates catalog data as exact category and product arrays', () => {
-    const catalog = { categories: [validCategory], products: [validProduct] };
-
-    expect(catalogDataSchema.parse(catalog)).toEqual(catalog);
-    expect(() => catalogDataSchema.parse({ ...catalog, version: 1 })).toThrow();
-  });
 });
 
 describe('cart and order contracts', () => {
@@ -61,13 +51,6 @@ describe('cart and order contracts', () => {
     expect(() => cartItemSchema.parse({ ...validCartItem, quantity: 0 })).toThrow();
     expect(() => cartItemSchema.parse({ ...validCartItem, quantity: 1.5 })).toThrow();
     expect(() => cartItemSchema.parse({ ...validCartItem, capturedUnitPrice: -1 })).toThrow();
-  });
-
-  it('accepts the minimal create-order input and rejects speculative fields', () => {
-    const input = createOrderInput();
-
-    expect(createOrderInputSchema.parse(input)).toEqual(input);
-    expect(() => createOrderInputSchema.parse({ ...input, customerName: 'Kim' })).toThrow();
   });
 
   it('accepts an order whose totals reconcile', () => {
@@ -110,7 +93,12 @@ describe('settings contracts', () => {
 
 describe('shipped defaults', () => {
   it('ships a valid catalog', () => {
-    expect(catalogDataSchema.parse(catalogDefaults)).toEqual(catalogDefaults);
+    expect(catalogDefaults.categories.map((category) => categorySchema.parse(category))).toEqual(
+      catalogDefaults.categories,
+    );
+    expect(catalogDefaults.products.map((product) => productSchema.parse(product))).toEqual(
+      catalogDefaults.products,
+    );
   });
 
   it('ships valid app settings', () => {

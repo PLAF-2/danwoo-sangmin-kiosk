@@ -49,13 +49,10 @@ export const productSchema = z
   .strict();
 export type Product = z.infer<typeof productSchema>;
 
-export const catalogDataSchema = z
-  .object({
-    categories: z.array(categorySchema),
-    products: z.array(productSchema),
-  })
-  .strict();
-export type CatalogData = z.infer<typeof catalogDataSchema>;
+export interface CatalogData {
+  categories: Category[];
+  products: Product[];
+}
 
 export const cartItemSchema = z
   .object({
@@ -140,10 +137,7 @@ export const paymentSettingsSchema = z
   .strict();
 export type PaymentSettings = z.infer<typeof paymentSettingsSchema>;
 
-export const createOrderInputSchema = z
-  .object({
-    items: z.array(cartItemSchema).min(1),
-    paymentMode: paymentModeSchema,
-  })
-  .strict();
-export type CreateOrderInput = z.infer<typeof createOrderInputSchema>;
+export interface CreateOrderInput {
+  items: CartItem[];
+  paymentMode: PaymentMode;
+}
