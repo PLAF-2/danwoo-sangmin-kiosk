@@ -1,0 +1,11 @@
+{
+  "mode": "instant",
+  "bankName": "",
+  "accountNumber": "",
+  "accountHolder": "",
+  "qrImage": "",
+  "instructionText": "결제 안내에 따라 진행해 주세요.",
+  "processingSeconds": 3,
+  "simulationResult": "success",
+  "pickupMessage": "카운터에서 주문 번호를 보여주세요."
+}
