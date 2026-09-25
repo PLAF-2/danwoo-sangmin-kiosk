@@ -9,9 +9,19 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/main.ts', 'src/preload.ts', '*.config.ts', 'e2e/**/*.ts'],
     languageOptions: {
-      globals: { ...globals.browser, ...globals.node },
+      globals: {
+        ...globals.node,
+        MAIN_WINDOW_VITE_DEV_SERVER_URL: 'readonly',
+        MAIN_WINDOW_VITE_NAME: 'readonly',
+      },
+    },
+  },
+  {
+    files: ['src/renderer/**/*.{ts,tsx}', 'src/test/**/*.ts', 'src/global.d.ts'],
+    languageOptions: {
+      globals: globals.browser,
     },
     plugins: {
       'react-hooks': reactHooks,
