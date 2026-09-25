@@ -9,7 +9,13 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['src/main.ts', 'src/preload.ts', '*.config.ts', 'e2e/**/*.ts'],
+    files: [
+      'src/main.ts',
+      'src/preload.ts',
+      'electron/**/*.ts',
+      '*.config.ts',
+      'e2e/**/*.ts',
+    ],
     languageOptions: {
       globals: {
         ...globals.node,

@@ -7,8 +7,10 @@
     "src/main.ts",
     "src/preload.ts",
     "src/forge.env.d.ts",
+    "electron/**/*.ts",
     "forge.config.ts",
     "vite.*.config.ts",
     "vitest.config.ts"
-  ]
+  ],
+  "exclude": ["electron/**/*.test.ts"]
 }
