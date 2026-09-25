@@ -1,14 +1,13 @@
 import { constants } from 'node:fs';
 import {
   access,
-  copyFile,
   lstat,
   mkdir,
   readFile,
   readdir,
   realpath,
 } from 'node:fs/promises';
-import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
+import { extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { z } from 'zod';
 
 import {
@@ -18,6 +17,10 @@ import {
   productSchema,
 } from '../../src/domain';
 import { createAtomicJsonStore } from './atomicJsonStore';
+import {
+  copyFileIfAbsentAtomic,
+  type AtomicFileInstallDependencies,
+} from './atomicFileInstall';
 import {
   createUserDataPaths,
   resolveImagePath,
@@ -37,6 +40,9 @@ const allowedImageExtensions = new Set(['.gif', '.jpeg', '.jpg', '.png', '.svg',
 export interface InitializeUserDataOptions {
   app: ElectronPathProvider;
   defaultsDirectory: string;
+  dependencies?: {
+    imageInstall?: Partial<AtomicFileInstallDependencies>;
+  };
 }
 
 type CatalogData = z.infer<typeof catalogDataSchema>;
@@ -328,17 +334,17 @@ async function preflightDefaults(
   return { ...validatedDefaults, ...sourceImages };
 }
 
-async function pathExists(path: string): Promise<boolean> {
-  return (await lstatIfExists(path)) !== null;
-}
-
 async function writeDefaultIfMissing<T>(
+  paths: UserDataPaths,
   filePath: string,
   schema: z.ZodType<T>,
   value: T,
 ): Promise<void> {
-  if (await pathExists(filePath)) return;
-  await createAtomicJsonStore({ filePath, schema }).write(value);
+  await createAtomicJsonStore({
+    filePath,
+    schema,
+    beforePublish: () => assertSafeDestinationPath(paths, filePath, 'file'),
+  }).writeIfAbsent(value);
 }
 
 async function copyMissingImages(
@@ -346,38 +352,43 @@ async function copyMissingImages(
   sourceImagesRealPath: string,
   sourceImageFiles: string[],
   paths: UserDataPaths,
+  dependencies?: Partial<AtomicFileInstallDependencies>,
 ): Promise<void> {
   for (const sourceRelativePath of sourceImageFiles) {
     const sourcePath = join(sourceImagesDirectory, sourceRelativePath);
     const targetPath = resolveImagePath(paths, join('images', sourceRelativePath));
     await assertRegularSourceFile(sourcePath, sourceImagesRealPath);
     await assertSafeDestinationPath(paths, targetPath, 'file');
-    await mkdir(dirname(targetPath), { recursive: true });
-
-    try {
-      await copyFile(sourcePath, targetPath, constants.COPYFILE_EXCL);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-    }
+    await copyFileIfAbsentAtomic({
+      sourcePath,
+      targetPath,
+      // This closes ordinary initialization races. Atomically validating every ancestor
+      // with the hard-link syscall is not available in Node; malicious concurrent
+      // same-user junction mutation is outside this local-app trust boundary.
+      beforePublish: () => assertSafeDestinationPath(paths, targetPath, 'file'),
+      ...(dependencies ? { dependencies } : {}),
+    });
   }
 }
 
 export async function initializeUserData({
   app,
   defaultsDirectory,
+  dependencies,
 }: InitializeUserDataOptions): Promise<UserDataPaths> {
   const paths = createUserDataPaths(app);
   const preflight = await preflightDefaults(defaultsDirectory, paths);
 
   await mkdir(paths.imagesDirectory, { recursive: true });
-  await writeDefaultIfMissing(paths.catalogFile, catalogDataSchema, preflight.catalog);
-  await writeDefaultIfMissing(paths.settingsFile, appSettingsSchema, preflight.settings);
-  await writeDefaultIfMissing(paths.paymentFile, paymentSettingsSchema, preflight.payment);
+  await writeDefaultIfMissing(paths, paths.catalogFile, catalogDataSchema, preflight.catalog);
+  await writeDefaultIfMissing(paths, paths.settingsFile, appSettingsSchema, preflight.settings);
+  await writeDefaultIfMissing(paths, paths.paymentFile, paymentSettingsSchema, preflight.payment);
   await copyMissingImages(
     preflight.sourceImagesDirectory,
     preflight.sourceImagesRealPath,
     preflight.sourceImageFiles,
     paths,
+    dependencies?.imageInstall,
   );
 
   return paths;

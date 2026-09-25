@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   mkdir as nodeMkdir,
   open as nodeOpen,
@@ -6,8 +5,15 @@ import {
   rename as nodeRename,
   unlink as nodeUnlink,
 } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import type { z } from 'zod';
+
+import {
+  createUniqueTemporaryPath,
+  defaultAtomicPublicationDependencies,
+  publishStagedFileIfAbsent,
+  type AtomicPublicationDependencies,
+} from './atomicFileOperations';
 
 export interface AtomicJsonFileHandle {
   writeFile(data: string, encoding: BufferEncoding): Promise<void>;
@@ -15,41 +21,52 @@ export interface AtomicJsonFileHandle {
   close(): Promise<void>;
 }
 
-export interface AtomicJsonStoreDependencies {
+export interface AtomicJsonStoreDependencies extends AtomicPublicationDependencies {
   readFile(path: string, encoding: BufferEncoding): Promise<string>;
   mkdir(path: string, options: { recursive: true }): Promise<unknown>;
   open(path: string, flags: 'wx'): Promise<AtomicJsonFileHandle>;
   rename(from: string, to: string): Promise<void>;
-  unlink(path: string): Promise<void>;
-  randomUUID(): string;
 }
 
 const defaultDependencies: AtomicJsonStoreDependencies = {
+  ...defaultAtomicPublicationDependencies,
   readFile: nodeReadFile,
   mkdir: nodeMkdir,
   open: nodeOpen,
   rename: nodeRename,
   unlink: nodeUnlink,
-  randomUUID,
 };
 
 export interface AtomicJsonStoreOptions<T> {
   filePath: string;
   schema: z.ZodType<T>;
+  beforePublish?: () => Promise<void>;
   dependencies?: Partial<AtomicJsonStoreDependencies>;
 }
 
 export interface AtomicJsonStore<T> {
   read(): Promise<T>;
   write(value: T): Promise<void>;
+  writeIfAbsent(value: T): Promise<boolean>;
 }
 
 export function createAtomicJsonStore<T>({
   filePath,
   schema,
+  beforePublish,
   dependencies: dependencyOverrides,
 }: AtomicJsonStoreOptions<T>): AtomicJsonStore<T> {
   const dependencies = { ...defaultDependencies, ...dependencyOverrides };
+
+  async function writeTemporaryJson(temporaryPath: string, value: T): Promise<void> {
+    const handle = await dependencies.open(temporaryPath, 'wx');
+    try {
+      await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`, 'utf8');
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  }
 
   return {
     async read(): Promise<T> {
@@ -60,30 +77,19 @@ export function createAtomicJsonStore<T>({
     async write(value: T): Promise<void> {
       const validatedValue = schema.parse(value);
       const directory = dirname(filePath);
-      const temporaryPath = join(
-        directory,
-        `.${basename(filePath)}.${dependencies.randomUUID()}.tmp`,
-      );
-      let handle: AtomicJsonFileHandle | undefined;
+      const temporaryPath = createUniqueTemporaryPath(filePath, dependencies.randomUUID);
 
       await dependencies.mkdir(directory, { recursive: true });
 
       try {
-        handle = await dependencies.open(temporaryPath, 'wx');
-        await handle.writeFile(`${JSON.stringify(validatedValue, null, 2)}\n`, 'utf8');
-        await handle.sync();
-        await handle.close();
-        handle = undefined;
+        await writeTemporaryJson(temporaryPath, validatedValue);
         await dependencies.rename(temporaryPath, filePath);
-      } catch (error) {
-        if (handle) {
-          try {
-            await handle.close();
-          } catch {
-            // Preserve the original write failure.
-          }
+        try {
+          await dependencies.syncDirectory(directory);
+        } catch {
+          // Parent-directory durability is best-effort on platforms such as Windows.
         }
-
+      } catch (error) {
         try {
           await dependencies.unlink(temporaryPath);
         } catch {
@@ -92,6 +98,18 @@ export function createAtomicJsonStore<T>({
 
         throw error;
       }
+    },
+
+    async writeIfAbsent(value: T): Promise<boolean> {
+      const validatedValue = schema.parse(value);
+      await dependencies.mkdir(dirname(filePath), { recursive: true });
+
+      return publishStagedFileIfAbsent({
+        targetPath: filePath,
+        dependencies,
+        ...(beforePublish ? { beforePublish } : {}),
+        stage: (temporaryPath) => writeTemporaryJson(temporaryPath, validatedValue),
+      });
     },
   };
 }

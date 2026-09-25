@@ -184,4 +184,57 @@ describe('initializeUserData', () => {
     expect(await readdir(outsideDirectory)).toEqual([]);
     expect(await readdir(userData)).toEqual(['images']);
   });
+
+  it('supports concurrent first-run initialization without replacing published data', async () => {
+    const userData = await makeTemporaryDirectory('highest-user-data-');
+    const defaultsDirectory = await makeTemporaryDirectory('highest-defaults-');
+    await copyFixtureDefaults(defaultsDirectory);
+    const options = { app: { getPath: () => userData }, defaultsDirectory };
+
+    await Promise.all([initializeUserData(options), initializeUserData(options)]);
+
+    expect(JSON.parse(await readFile(join(userData, 'catalog.json'), 'utf8'))).toHaveProperty(
+      'products',
+    );
+    expect(await readFile(join(userData, 'images', 'horizon-album.svg'), 'utf8')).toContain(
+      '<svg',
+    );
+    expect((await readdir(userData)).sort()).toEqual([
+      'catalog.json',
+      'images',
+      'payment.json',
+      'settings.json',
+    ]);
+  });
+
+  it('recovers a complete image on the launch after interrupted image publication', async () => {
+    const userData = await makeTemporaryDirectory('highest-user-data-');
+    const defaultsDirectory = await makeTemporaryDirectory('highest-defaults-');
+    await copyFixtureDefaults(defaultsDirectory);
+    let shouldInterrupt = true;
+
+    await expect(
+      initializeUserData({
+        app: { getPath: () => userData },
+        defaultsDirectory,
+        dependencies: {
+          imageInstall: {
+            link: async () => {
+              if (shouldInterrupt) {
+                shouldInterrupt = false;
+                throw new Error('injected image publication failure');
+              }
+            },
+          },
+        },
+      }),
+    ).rejects.toThrow('injected image publication failure');
+    expect(await readdir(join(userData, 'images'))).toEqual([]);
+
+    await initializeUserData({ app: { getPath: () => userData }, defaultsDirectory });
+
+    expect(await readFile(join(userData, 'images', 'horizon-album.svg'), 'utf8')).toContain(
+      '<svg',
+    );
+  });
 });
