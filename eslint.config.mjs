@@ -10,8 +10,6 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     files: [
-      'src/main.ts',
-      'src/preload.ts',
       'electron/**/*.ts',
       '*.config.ts',
       'e2e/**/*.ts',

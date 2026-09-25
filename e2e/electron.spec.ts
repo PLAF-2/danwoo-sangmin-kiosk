@@ -27,7 +27,7 @@ test('boots Electron with only the typed preload boundary exposed', async () => 
     });
 
     expect(exposedGlobals).toEqual({
-      kioskKeys: [],
+      kioskKeys: ['catalog', 'settings', 'media', 'orders', 'admin'],
       nodeProcess: 'undefined',
       nodeRequire: 'undefined',
     });

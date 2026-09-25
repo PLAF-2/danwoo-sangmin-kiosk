@@ -1,0 +1,73 @@
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { initializeAdminPassword, registerAdminIpc } from './adminIpc';
+import { createTestIpcMain } from './testHelpers';
+
+const directories: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true, force: true })));
+});
+
+async function credentialPath(): Promise<string> {
+  const directory = await mkdtemp(join(tmpdir(), 'highest-admin-'));
+  directories.push(directory);
+  return join(directory, 'admin-credentials.json');
+}
+
+describe('admin password IPC', () => {
+  it('has no fallback password when the initialization environment variable is absent', async () => {
+    const path = await credentialPath();
+    const error = vi.fn();
+
+    await initializeAdminPassword({ credentialFile: path, initialPassword: undefined, log: { error } });
+    const ipcMain = createTestIpcMain();
+    registerAdminIpc({ ipcMain, credentialFile: path });
+
+    await expect(ipcMain.invoke('admin:authenticate', 'admin')).resolves.toBe(false);
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('KIOSK_ADMIN_INITIAL_PASSWORD'));
+  });
+
+  it('stores only a salted hash, authenticates, and changes the password', async () => {
+    const path = await credentialPath();
+    await initializeAdminPassword({
+      credentialFile: path,
+      initialPassword: 'initial-secret',
+      log: { error: vi.fn() },
+    });
+
+    const serialized = await readFile(path, 'utf8');
+    expect(serialized).not.toContain('initial-secret');
+    expect(JSON.parse(serialized)).toMatchObject({ algorithm: 'scrypt' });
+
+    const ipcMain = createTestIpcMain();
+    registerAdminIpc({ ipcMain, credentialFile: path });
+    await expect(ipcMain.invoke('admin:authenticate', 'wrong')).resolves.toBe(false);
+    await expect(ipcMain.invoke('admin:authenticate', 'initial-secret')).resolves.toBe(true);
+    await expect(
+      ipcMain.invoke('admin:change-password', 'initial-secret', 'new-secure-password'),
+    ).resolves.toBeUndefined();
+    await expect(ipcMain.invoke('admin:authenticate', 'initial-secret')).resolves.toBe(false);
+    await expect(ipcMain.invoke('admin:authenticate', 'new-secure-password')).resolves.toBe(true);
+  });
+
+  it('rejects invalid boundary inputs and an incorrect current password', async () => {
+    const path = await credentialPath();
+    await initializeAdminPassword({
+      credentialFile: path,
+      initialPassword: 'initial-secret',
+      log: { error: vi.fn() },
+    });
+    const ipcMain = createTestIpcMain();
+    registerAdminIpc({ ipcMain, credentialFile: path });
+
+    await expect(ipcMain.invoke('admin:authenticate', 'ok', 'extra')).rejects.toThrow();
+    await expect(ipcMain.invoke('admin:change-password', 'wrong', 'new-secure-password')).rejects.toThrow(
+      'Current password is incorrect',
+    );
+    await expect(ipcMain.invoke('admin:change-password', 'initial-secret', 'short')).rejects.toThrow();
+  });
+});

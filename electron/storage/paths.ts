@@ -10,6 +10,8 @@ export interface UserDataPaths {
   settingsFile: string;
   paymentFile: string;
   imagesDirectory: string;
+  ordersDirectory: string;
+  adminCredentialsFile: string;
 }
 
 export function createUserDataPaths(app: ElectronPathProvider): UserDataPaths {
@@ -21,6 +23,8 @@ export function createUserDataPaths(app: ElectronPathProvider): UserDataPaths {
     settingsFile: join(userData, 'settings.json'),
     paymentFile: join(userData, 'payment.json'),
     imagesDirectory: join(userData, 'images'),
+    ordersDirectory: join(userData, 'orders'),
+    adminCredentialsFile: join(userData, 'admin-credentials.json'),
   };
 }
 

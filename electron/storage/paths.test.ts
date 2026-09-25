@@ -26,6 +26,8 @@ describe('user data paths', () => {
       settingsFile: join(userData, 'settings.json'),
       paymentFile: join(userData, 'payment.json'),
       imagesDirectory: join(userData, 'images'),
+      ordersDirectory: join(userData, 'orders'),
+      adminCredentialsFile: join(userData, 'admin-credentials.json'),
     });
     expect(resolveImagePath(paths, 'images/product.svg')).toBe(
       join(userData, 'images', 'product.svg'),

@@ -4,8 +4,6 @@
     "types": ["node"]
   },
   "include": [
-    "src/main.ts",
-    "src/preload.ts",
     "src/forge.env.d.ts",
     "electron/**/*.ts",
     "forge.config.ts",
