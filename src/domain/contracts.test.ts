@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import catalogDefaults from '../../data/defaults/catalog.json';
@@ -60,11 +63,32 @@ describe('cart and order contracts', () => {
     expect(() => orderSchema.parse({ ...order, total: 24999 })).toThrow();
     expect(() => orderSchema.parse({ ...order, status: 'refunded' })).toThrow();
   });
+
+  it('rejects an order whose subtotal does not equal its item total', () => {
+    const order = createOrder({
+      items: [
+        {
+          ...createCartItem({ quantity: 2 }),
+          name: 'HORIZON Album',
+          thumbnailImage: 'images/horizon-album.svg',
+        },
+      ],
+    });
+
+    expect(() => orderSchema.parse(order)).toThrow();
+  });
 });
 
 describe('settings contracts', () => {
   const validAppSettings = createAppSettings();
   const validPaymentSettings = createPaymentSettings();
+  const validBankQrSettings = createPaymentSettings({
+    mode: 'bankQr',
+    bankName: '샘플은행',
+    accountNumber: 'configured-at-runtime',
+    accountHolder: 'HIGHEST',
+    qrImage: 'images/payment-qr.svg',
+  });
 
   it('accepts valid app settings and rejects unsafe timing and image bounds', () => {
     expect(appSettingsSchema.parse(validAppSettings)).toEqual(validAppSettings);
@@ -89,6 +113,19 @@ describe('settings contracts', () => {
       paymentSettingsSchema.parse({ ...validPaymentSettings, simulationResult: 'random' }),
     ).toThrow();
   });
+
+  it('accepts complete bank and QR details in bankQr mode', () => {
+    expect(paymentSettingsSchema.parse(validBankQrSettings)).toEqual(validBankQrSettings);
+  });
+
+  it.each(['bankName', 'accountNumber', 'accountHolder', 'qrImage'] as const)(
+    'rejects a blank %s in bankQr mode',
+    (field) => {
+      expect(() =>
+        paymentSettingsSchema.parse({ ...validBankQrSettings, [field]: '   ' }),
+      ).toThrow();
+    },
+  );
 });
 
 describe('shipped defaults', () => {
@@ -99,6 +136,7 @@ describe('shipped defaults', () => {
     expect(catalogDefaults.products.map((product) => productSchema.parse(product))).toEqual(
       catalogDefaults.products,
     );
+    expect(catalogDefaults.categories.find(({ id }) => id === 'goods')?.name).toBe('굿즈');
   });
 
   it('ships valid app settings', () => {
@@ -108,5 +146,26 @@ describe('shipped defaults', () => {
   it('ships valid payment settings without a hardcoded account number', () => {
     expect(paymentSettingsSchema.parse(paymentDefaults)).toEqual(paymentDefaults);
     expect(paymentDefaults.accountNumber).toBe('');
+  });
+
+  it('ships only safe image paths that resolve to default assets', () => {
+    const defaultsDirectory = path.resolve(process.cwd(), 'data/defaults');
+    const imagePaths = [
+      settingsDefaults.welcomeBackgroundImage,
+      paymentDefaults.qrImage,
+      ...catalogDefaults.products.flatMap(({ thumbnailImage, detailImages }) => [
+        thumbnailImage,
+        ...detailImages,
+      ]),
+    ].filter((imagePath) => imagePath.length > 0);
+
+    expect(imagePaths.length).toBeGreaterThan(0);
+    for (const imagePath of imagePaths) {
+      const resolvedPath = path.resolve(defaultsDirectory, imagePath);
+      const relativePath = path.relative(defaultsDirectory, resolvedPath);
+
+      expect(relativePath.startsWith('..') || path.isAbsolute(relativePath)).toBe(false);
+      expect(existsSync(resolvedPath), imagePath).toBe(true);
+    }
   });
 });

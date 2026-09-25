@@ -8,7 +8,7 @@
     },
     {
       "id": "goods",
-      "name": "구즈",
+      "name": "굿즈",
       "isActive": true,
       "displayOrder": 1
     }
@@ -19,8 +19,8 @@
       "name": "HORIZON Album",
       "price": 25000,
       "categoryId": "albums",
-      "thumbnailImage": "images/horizon-album.png",
-      "detailImages": ["images/horizon-album-detail.png"],
+      "thumbnailImage": "images/horizon-album.svg",
+      "detailImages": ["images/horizon-album-detail.svg"],
       "description": "새로운 수평선을 담은 HIGHEST의 앨범입니다.",
       "specifications": [
         {
@@ -40,7 +40,7 @@
       "name": "HORIZON Keyring",
       "price": 12000,
       "categoryId": "goods",
-      "thumbnailImage": "images/horizon-keyring.png",
+      "thumbnailImage": "images/horizon-keyring.svg",
       "detailImages": [],
       "description": "HIGHEST 로고 키링입니다.",
       "specifications": [

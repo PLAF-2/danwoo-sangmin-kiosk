@@ -86,6 +86,19 @@ export const orderSchema = z
     createdAt: timestamp,
   })
   .strict()
+  .refine(
+    ({ items, subtotal }) =>
+      subtotal ===
+      items.reduce(
+        (itemTotal, { quantity, capturedUnitPrice }) =>
+          itemTotal + quantity * capturedUnitPrice,
+        0,
+      ),
+    {
+      message: 'subtotal must equal the sum of item quantities and captured prices',
+      path: ['subtotal'],
+    },
+  )
   .refine(({ subtotal, discount }) => discount <= subtotal, {
     message: 'discount must not exceed subtotal',
     path: ['discount'],
@@ -134,7 +147,20 @@ export const paymentSettingsSchema = z
     simulationResult: z.enum(['success', 'failure']),
     pickupMessage: nonEmptyString,
   })
-  .strict();
+  .strict()
+  .superRefine((settings, context) => {
+    if (settings.mode !== 'bankQr') return;
+
+    for (const field of ['bankName', 'accountNumber', 'accountHolder', 'qrImage'] as const) {
+      if (settings[field].trim().length === 0) {
+        context.addIssue({
+          code: 'custom',
+          message: `${field} is required in bankQr mode`,
+          path: [field],
+        });
+      }
+    }
+  });
 export type PaymentSettings = z.infer<typeof paymentSettingsSchema>;
 
 export interface CreateOrderInput {
