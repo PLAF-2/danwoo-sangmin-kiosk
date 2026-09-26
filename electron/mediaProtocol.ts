@@ -2,6 +2,7 @@ import { lstat, readFile, realpath } from 'node:fs/promises';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
 
 import type { UserDataPaths } from './storage/paths';
+import { createConsistencyLock, type ConsistencyLock } from './ipc/consistencyLock';
 
 export const KIOSK_MEDIA_SCHEME = 'kiosk-media';
 
@@ -15,7 +16,6 @@ interface ProtocolPrivilegesRegistrar {
 }
 
 const contentTypes = new Map([
-  ['.gif', 'image/gif'],
   ['.jpeg', 'image/jpeg'],
   ['.jpg', 'image/jpeg'],
   ['.png', 'image/png'],
@@ -45,8 +45,9 @@ export function registerMediaSchemePrivileges(protocol: ProtocolPrivilegesRegist
 
 export function createMediaRequestHandler(
   paths: UserDataPaths,
+  consistencyLock: ConsistencyLock = createConsistencyLock(),
 ): (request: Request) => Promise<Response> {
-  return async (request) => {
+  return (request) => consistencyLock.withRead(async () => {
     try {
       const url = new URL(request.url);
       if (url.protocol !== `${KIOSK_MEDIA_SCHEME}:` || url.hostname !== 'images') {
@@ -93,5 +94,5 @@ export function createMediaRequestHandler(
       }
       throw error;
     }
-  };
+  });
 }

@@ -9,30 +9,15 @@ import { createTestIpcEvent, createTestIpcMain, createTestIpcSecurity } from './
 const directories: string[] = [];
 
 function png(width: number, height: number): Buffer {
-  const data = Buffer.alloc(24);
-  Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex').copy(data);
-  data.writeUInt32BE(width, 16);
-  data.writeUInt32BE(height, 20);
-  return data;
+  const fixtures = new Map([
+    ['1x1', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADUlEQVQImWNgZGL+DwABFAEG9O6t0QAAAABJRU5ErkJggg=='],
+    ['2x1', 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADklEQVQImWNgZGL+D8IABjsCC2IwlrMAAAAASUVORK5CYII='],
+  ]);
+  return Buffer.from(fixtures.get(`${width}x${height}`)!, 'base64');
 }
 
-function webp(kind: 'VP8 ' | 'VP8L', width: number, height: number): Buffer {
-  const data = Buffer.alloc(30);
-  data.write('RIFF', 0, 'ascii');
-  data.writeUInt32LE(data.length - 8, 4);
-  data.write('WEBP', 8, 'ascii');
-  data.write(kind, 12, 'ascii');
-  if (kind === 'VP8L') {
-    data.writeUInt32LE(5, 16);
-    data[20] = 0x2f;
-    data.writeUInt32LE((width - 1) | ((height - 1) << 14), 21);
-  } else {
-    data.writeUInt32LE(10, 16);
-    Buffer.from([0x9d, 0x01, 0x2a]).copy(data, 23);
-    data.writeUInt16LE(width, 26);
-    data.writeUInt16LE(height, 28);
-  }
-  return data;
+function webp(): Buffer {
+  return Buffer.from('UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoCAAEAAUAmJaQAA3AA/v0gUAA=', 'base64');
 }
 
 afterEach(async () => {
@@ -94,7 +79,7 @@ describe('media IPC', () => {
     const oversized = join(directory, 'oversized.png');
     const invalid = join(directory, 'invalid.png');
     const rectangle = join(directory, 'rectangle.png');
-    await writeFile(oversized, Buffer.alloc(33));
+    await writeFile(oversized, Buffer.alloc(257));
     await writeFile(invalid, Buffer.from('not an image'));
     await writeFile(rectangle, png(2, 1));
     const ipcMain = createTestIpcMain();
@@ -110,7 +95,7 @@ describe('media IPC', () => {
       imagesDirectory: join(directory, 'images'),
       dialog: { showOpenDialog },
       security,
-      maxBytes: 32,
+      maxBytes: 256,
     });
 
     await expect(ipcMain.invoke('media:import-square-image')).rejects.toThrow('Admin authentication required');
@@ -152,11 +137,11 @@ describe('media IPC', () => {
     );
   });
 
-  it.each(['VP8 ', 'VP8L'] as const)('accepts valid %s WebP dimensions', async (kind) => {
+  it('accepts a fully decodable WebP image', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'highest-media-'));
     directories.push(directory);
     const source = join(directory, 'welcome.webp');
-    await writeFile(source, webp(kind, 2, 1));
+    await writeFile(source, webp());
     const ipcMain = createTestIpcMain();
     const security = createTestIpcSecurity();
     const event = createTestIpcEvent();

@@ -10,6 +10,7 @@ import {
 } from '../../src/domain';
 import { createAtomicJsonStore } from '../storage/atomicJsonStore';
 import { IPC_CHANNELS, type IpcMainLike } from './channels';
+import { createConsistencyLock, type ConsistencyLock } from './consistencyLock';
 import type { IpcSecurity } from './ipcSecurity';
 import { catalogDataSchema, createOrderInputSchema } from './schemas';
 
@@ -44,6 +45,7 @@ export function registerOrderIpc({
   paymentFile,
   ordersDirectory,
   security,
+  consistencyLock = createConsistencyLock(),
   now = () => new Date(),
   createOrderNumber = () => defaultOrderNumber(now()),
 }: {
@@ -52,6 +54,7 @@ export function registerOrderIpc({
   paymentFile: string;
   ordersDirectory: string;
   security: IpcSecurity;
+  consistencyLock?: ConsistencyLock;
   now?: () => Date;
   createOrderNumber?: () => string;
 }): void {
@@ -72,7 +75,7 @@ export function registerOrderIpc({
       return pending.promise;
     }
 
-    const operation = creationQueue.then(async () => {
+    const operation = creationQueue.then(() => consistencyLock.withWrite(async () => {
       const requestStore = createAtomicJsonStore({
         filePath: join(ordersDirectory, '.requests', `${input.requestId}.json`),
         schema: requestRecordSchema,
@@ -136,7 +139,7 @@ export function registerOrderIpc({
         schema: orderSchema,
       }).writeIfAbsent(order);
       return order;
-    });
+    }));
 
     inFlight.set(input.requestId, { fingerprint, promise: operation });
     const clearInFlight = () => {
@@ -153,11 +156,13 @@ export function registerOrderIpc({
   ipcMain.handle(IPC_CHANNELS.ordersRead, async (event, ...args) => {
     security.authorizePublic(event);
     const [orderNumber] = z.tuple([orderNumberSchema]).parse(args);
-    return readIfPresent(
-      createAtomicJsonStore({
-        filePath: join(ordersDirectory, `${orderNumber}.json`),
-        schema: orderSchema,
-      }),
+    return consistencyLock.withRead(() =>
+      readIfPresent(
+        createAtomicJsonStore({
+          filePath: join(ordersDirectory, `${orderNumber}.json`),
+          schema: orderSchema,
+        }),
+      ),
     );
   });
 }

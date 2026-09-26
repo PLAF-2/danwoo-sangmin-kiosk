@@ -13,17 +13,19 @@ import { createAtomicJsonStore } from '../storage/atomicJsonStore';
 import { MAX_IMAGE_BYTES } from '../storage/imageValidation';
 import type { UserDataPaths } from '../storage/paths';
 import { registerBackupIpc } from './backupIpc';
+import { registerCatalogIpc } from './catalogIpc';
+import { createConsistencyLock } from './consistencyLock';
 import { catalogDataSchema } from './schemas';
 import { createTestIpcEvent, createTestIpcMain, createTestIpcSecurity } from './testHelpers';
 
 const directories: string[] = [];
 
 function png(width = 1, height = 1): Buffer {
-  const data = Buffer.alloc(24);
-  Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex').copy(data);
-  data.writeUInt32BE(width, 16);
-  data.writeUInt32BE(height, 20);
-  return data;
+  if (width !== 1 || height !== 1) throw new Error('Missing PNG test fixture');
+  return Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADUlEQVQImWNgZGL+DwABFAEG9O6t0QAAAABJRU5ErkJggg==',
+    'base64',
+  );
 }
 
 afterEach(async () => {
@@ -56,7 +58,7 @@ async function setupPaths(): Promise<UserDataPaths> {
     createPaymentSettings(),
   );
   await mkdir(paths.imagesDirectory, { recursive: true });
-  await writeFile(join(paths.imagesDirectory, 'owned.png'), Buffer.from('owned-image'));
+  await writeFile(join(paths.imagesDirectory, 'owned.png'), png());
   return paths;
 }
 
@@ -65,11 +67,19 @@ function registerAuthorizedBackup(
   paths: UserDataPaths,
   dialog: Parameters<typeof registerBackupIpc>[0]['dialog'],
   fileOperations?: Parameters<typeof registerBackupIpc>[0]['fileOperations'],
+  exportLimits?: Parameters<typeof registerBackupIpc>[0]['exportLimits'],
 ) {
   const security = createTestIpcSecurity();
   const event = createTestIpcEvent();
   security.createAdminSession(event);
-  registerBackupIpc({ ipcMain, paths, dialog, security, ...(fileOperations ? { fileOperations } : {}) });
+  registerBackupIpc({
+    ipcMain,
+    paths,
+    dialog,
+    security,
+    ...(fileOperations ? { fileOperations } : {}),
+    ...(exportLimits ? { exportLimits } : {}),
+  });
   return event;
 }
 
@@ -107,8 +117,49 @@ describe('backup IPC', () => {
       payment: createPaymentSettings(),
     });
     expect(backup.images).toEqual([
-      { path: 'images/owned.png', contentBase64: Buffer.from('owned-image').toString('base64') },
+      { path: 'images/owned.png', contentBase64: png().toString('base64') },
     ]);
+  });
+
+  it('stops export traversal before reading an oversized image', async () => {
+    const paths = await setupPaths();
+    const backupFile = join(paths.userData, 'oversized-export.json');
+    await writeFile(join(paths.imagesDirectory, 'oversized.png'), Buffer.alloc(65));
+    const ipcMain = createTestIpcMain();
+    const event = registerAuthorizedBackup(
+      ipcMain,
+      paths,
+      {
+        showSaveDialog: vi.fn().mockResolvedValue({ canceled: false, filePath: backupFile }),
+        showOpenDialog: vi.fn(),
+      },
+      undefined,
+      { maxImageBytes: 64 },
+    );
+
+    await expect(ipcMain.invokeFrom(event, 'admin:export-backup')).rejects.toThrow('too large');
+    await expect(readFile(backupFile)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('stops export traversal when the image count limit is exceeded', async () => {
+    const paths = await setupPaths();
+    const backupFile = join(paths.userData, 'many-export.json');
+    await writeFile(join(paths.imagesDirectory, 'second.png'), png());
+    await writeFile(join(paths.imagesDirectory, 'third.png'), png());
+    const ipcMain = createTestIpcMain();
+    const event = registerAuthorizedBackup(
+      ipcMain,
+      paths,
+      {
+        showSaveDialog: vi.fn().mockResolvedValue({ canceled: false, filePath: backupFile }),
+        showOpenDialog: vi.fn(),
+      },
+      undefined,
+      { maxImageCount: 2 },
+    );
+
+    await expect(ipcMain.invokeFrom(event, 'admin:export-backup')).rejects.toThrow('count limit');
+    await expect(readFile(backupFile)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('validates the entire import before mutation and preserves current data on failure', async () => {
@@ -285,6 +336,83 @@ describe('backup IPC', () => {
     await expect(readFile(join(paths.imagesDirectory, 'new.png'))).rejects.toMatchObject({ code: 'ENOENT' });
     const userDataEntries = await readdir(paths.userData);
     expect(userDataEntries.filter((name) => name.startsWith('.highest-restore-'))).toEqual([]);
+  });
+
+  it('serializes a restore with concurrent catalog reads and saves', async () => {
+    const paths = await setupPaths();
+    const importFile = join(paths.userData, 'concurrent-restore.json');
+    const restoredCatalog = createCatalogData({
+      products: [{ ...createCatalogData().products[0]!, name: 'restored', thumbnailImage: 'images/new.png', detailImages: ['images/new.png'] }],
+    });
+    const savedCatalog = createCatalogData({
+      products: [{ ...createCatalogData().products[0]!, name: 'saved-after-restore' }],
+    });
+    await writeFile(
+      importFile,
+      JSON.stringify({
+        version: 1,
+        catalog: restoredCatalog,
+        settings: createAppSettings(),
+        payment: createPaymentSettings(),
+        images: [{ path: 'images/new.png', contentBase64: png().toString('base64') }],
+      }),
+    );
+    const ipcMain = createTestIpcMain();
+    const security = createTestIpcSecurity();
+    const event = createTestIpcEvent();
+    const consistencyLock = createConsistencyLock();
+    security.createAdminSession(event);
+    let releaseCommit!: () => void;
+    const commitGate = new Promise<void>((resolve) => {
+      releaseCommit = resolve;
+    });
+    let signalCommitStarted!: () => void;
+    const commitStarted = new Promise<void>((resolve) => {
+      signalCommitStarted = resolve;
+    });
+    let renameCalls = 0;
+    registerBackupIpc({
+      ipcMain,
+      paths,
+      security,
+      consistencyLock,
+      dialog: {
+        showSaveDialog: vi.fn(),
+        showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: [importFile] }),
+      },
+      fileOperations: {
+        rename: async (from, to) => {
+          renameCalls += 1;
+          if (renameCalls === 1) {
+            signalCommitStarted();
+            await commitGate;
+          }
+          await rename(from, to);
+        },
+      },
+    });
+    registerCatalogIpc({ ipcMain, catalogFile: paths.catalogFile, security, consistencyLock });
+
+    const restore = ipcMain.invokeFrom(event, 'admin:import-backup');
+    await commitStarted;
+    let readSettled = false;
+    let saveSettled = false;
+    const read = ipcMain.invokeFrom(event, 'catalog:read').finally(() => {
+      readSettled = true;
+    });
+    const save = ipcMain.invokeFrom(event, 'catalog:save', savedCatalog).finally(() => {
+      saveSettled = true;
+    });
+    await Promise.resolve();
+    expect({ readSettled, saveSettled }).toEqual({ readSettled: false, saveSettled: false });
+
+    releaseCommit();
+    await restore;
+    await expect(read).resolves.toEqual(restoredCatalog);
+    await expect(save).resolves.toBeUndefined();
+    await expect(
+      createAtomicJsonStore({ filePath: paths.catalogFile, schema: catalogDataSchema }).read(),
+    ).resolves.toEqual(savedCatalog);
   });
 
   it('rejects a selected backup link before reading or mutating user data', async () => {

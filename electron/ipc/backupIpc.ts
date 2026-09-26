@@ -3,7 +3,6 @@ import {
   mkdir,
   mkdtemp as nodeMkdtemp,
   open,
-  readFile,
   readdir,
   rename as nodeRename,
   rm as nodeRm,
@@ -27,11 +26,13 @@ import {
 } from '../storage/restoreTransaction';
 import type { UserDataPaths } from '../storage/paths';
 import { IPC_CHANNELS, type IpcMainLike } from './channels';
+import { createConsistencyLock, type ConsistencyLock } from './consistencyLock';
 import type { IpcSecurity } from './ipcSecurity';
 import { catalogDataSchema } from './schemas';
 
-const allowedImageExtensions = new Set(['.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp']);
+const allowedImageExtensions = new Set(['.jpeg', '.jpg', '.png', '.svg', '.webp']);
 const maxBackupImageBytes = 50 * 1024 * 1024;
+const maxBackupImageCount = 500;
 const maxBackupFileBytes = 80 * 1024 * 1024;
 const maxBase64Length = 4 * Math.ceil(MAX_IMAGE_BYTES / 3);
 const base64Schema = z
@@ -110,7 +111,16 @@ const defaultFileOperations: BackupFileOperations = {
   rm: nodeRm,
 };
 
-async function listImages(directory: string, root = directory): Promise<Backup['images']> {
+async function listImages(
+  directory: string,
+  root = directory,
+  usage = { count: 0, bytes: 0 },
+  limits = {
+    maxImageBytes: MAX_IMAGE_BYTES,
+    maxTotalBytes: maxBackupImageBytes,
+    maxImageCount: maxBackupImageCount,
+  },
+): Promise<Backup['images']> {
   let entries: Dirent<string>[];
   try {
     entries = await readdir(directory, { withFileTypes: true });
@@ -121,18 +131,28 @@ async function listImages(directory: string, root = directory): Promise<Backup['
   const images: Backup['images'] = [];
   for (const entry of entries) {
     const path = join(directory, entry.name);
-    if (entry.isSymbolicLink()) throw new Error(`Image directory contains a link: ${path}`);
-    if (entry.isDirectory()) {
-      images.push(...(await listImages(path, root)));
+    const stats = await nodeLstat(path);
+    if (entry.isSymbolicLink() || stats.isSymbolicLink()) {
+      throw new Error(`Image directory contains a link: ${path}`);
+    }
+    if (entry.isDirectory() && stats.isDirectory()) {
+      images.push(...(await listImages(path, root, usage, limits)));
       continue;
     }
-    if (!entry.isFile()) throw new Error(`Image path is not a regular file: ${path}`);
+    if (!entry.isFile() || !stats.isFile()) throw new Error(`Image path is not a regular file: ${path}`);
     const relativePath = relative(root, path).replaceAll('\\', '/');
     const imagePath = ownedImagePathSchema.parse(`images/${relativePath}`);
     if (!allowedImageExtensions.has(extname(imagePath).toLowerCase())) {
       throw new Error(`Unsupported image in user data: ${imagePath}`);
     }
-    images.push({ path: imagePath, contentBase64: (await readFile(path)).toString('base64') });
+    usage.count += 1;
+    usage.bytes += stats.size;
+    if (usage.count > limits.maxImageCount) throw new Error('Backup image count limit exceeded');
+    if (stats.size > limits.maxImageBytes) throw new Error(`Backup image is too large: ${imagePath}`);
+    if (usage.bytes > limits.maxTotalBytes) throw new Error('Backup image total is too large');
+    const content = await readBoundedRegularFile(path, limits.maxImageBytes, 'Backup image');
+    await validateImageContent(content, imagePath, { allowSvg: true });
+    images.push({ path: imagePath, contentBase64: content.toString('base64') });
   }
   return images.sort((left, right) => left.path.localeCompare(right.path));
 }
@@ -161,15 +181,29 @@ export function registerBackupIpc({
   paths,
   dialog,
   security,
+  consistencyLock = createConsistencyLock(),
+  exportLimits: exportLimitOverrides,
   fileOperations: fileOperationOverrides,
 }: {
   ipcMain: IpcMainLike;
   paths: UserDataPaths;
   dialog: BackupDialogLike;
   security: IpcSecurity;
+  consistencyLock?: ConsistencyLock;
+  exportLimits?: Partial<{
+    maxImageBytes: number;
+    maxTotalBytes: number;
+    maxImageCount: number;
+  }>;
   fileOperations?: Partial<BackupFileOperations>;
 }): void {
   const fileOperations = { ...defaultFileOperations, ...fileOperationOverrides };
+  const exportLimits = {
+    maxImageBytes: MAX_IMAGE_BYTES,
+    maxTotalBytes: maxBackupImageBytes,
+    maxImageCount: maxBackupImageCount,
+    ...exportLimitOverrides,
+  };
   const catalogStore = createAtomicJsonStore({ filePath: paths.catalogFile, schema: catalogDataSchema });
   const settingsStore = createAtomicJsonStore({ filePath: paths.settingsFile, schema: appSettingsSchema });
   const paymentStore = createAtomicJsonStore({ filePath: paths.paymentFile, schema: paymentSettingsSchema });
@@ -182,15 +216,17 @@ export function registerBackupIpc({
       filters: [{ name: 'HIGHEST Kiosk Backup', extensions: ['json'] }],
     });
     if (result.canceled || !result.filePath) return null;
-    const backup = backupSchema.parse({
-      version: 1,
-      catalog: await catalogStore.read(),
-      settings: await settingsStore.read(),
-      payment: await paymentStore.read(),
-      images: await listImages(paths.imagesDirectory),
+    return consistencyLock.withRead(async () => {
+      const backup = backupSchema.parse({
+        version: 1,
+        catalog: await catalogStore.read(),
+        settings: await settingsStore.read(),
+        payment: await paymentStore.read(),
+        images: await listImages(paths.imagesDirectory, paths.imagesDirectory, { count: 0, bytes: 0 }, exportLimits),
+      });
+      await createAtomicJsonStore({ filePath: result.filePath!, schema: backupSchema }).write(backup);
+      return result.filePath!;
     });
-    await createAtomicJsonStore({ filePath: result.filePath, schema: backupSchema }).write(backup);
-    return result.filePath;
   });
 
   ipcMain.handle(IPC_CHANNELS.backupImport, async (event, ...args) => {
@@ -202,44 +238,46 @@ export function registerBackupIpc({
     });
     const [filePath] = result.filePaths;
     if (result.canceled || !filePath) return;
-    const sourceStats = await fileOperations.lstat(filePath);
-    if (!sourceStats.isFile() || sourceStats.isSymbolicLink()) {
-      throw new Error('Backup must be a regular file');
-    }
+    return consistencyLock.withWrite(async () => {
+      const sourceStats = await fileOperations.lstat(filePath);
+      if (!sourceStats.isFile() || sourceStats.isSymbolicLink()) {
+        throw new Error('Backup must be a regular file');
+      }
 
-    const backup = backupSchema.parse(
-      JSON.parse((await readBoundedRegularFile(filePath, maxBackupFileBytes, 'Backup')).toString('utf8')),
-    );
-    const decodedImages = backup.images.map((image) => {
-      const content = Buffer.from(image.contentBase64, 'base64');
-      validateImageContent(content, image.path, { allowSvg: true });
-      return { path: image.path, content };
+      const backup = backupSchema.parse(
+        JSON.parse((await readBoundedRegularFile(filePath, maxBackupFileBytes, 'Backup')).toString('utf8')),
+      );
+      const decodedImages = await Promise.all(backup.images.map(async (image) => {
+        const content = Buffer.from(image.contentBase64, 'base64');
+        await validateImageContent(content, image.path, { allowSvg: true });
+        return { path: image.path, content };
+      }));
+      const transactionRoot = await fileOperations.mkdtemp(join(paths.userData, '.highest-restore-'));
+      const stage = join(transactionRoot, 'stage');
+      const restoreFileOperations = {
+        lstat: fileOperations.lstat,
+        rename: fileOperations.rename,
+        rm: fileOperations.rm,
+      };
+      let journaled = false;
+      try {
+        await createAtomicJsonStore({ filePath: join(stage, 'catalog.json'), schema: catalogDataSchema }).write(backup.catalog);
+        await createAtomicJsonStore({ filePath: join(stage, 'settings.json'), schema: appSettingsSchema }).write(backup.settings);
+        await createAtomicJsonStore({ filePath: join(stage, 'payment.json'), schema: paymentSettingsSchema }).write(backup.payment);
+        await mkdir(join(stage, 'images'), { recursive: true });
+        for (const image of decodedImages) {
+          const relativeImagePath = image.path.slice('images/'.length);
+          await writeBufferAtomic(join(stage, 'images', ...relativeImagePath.split('/')), image.content);
+        }
+        await prepareRestoreTransaction({ paths, transactionRoot, fileOperations: restoreFileOperations });
+        journaled = true;
+        await commitRestoreTransaction({ paths, transactionRoot, fileOperations: restoreFileOperations });
+      } catch (error) {
+        if (!journaled) {
+          await fileOperations.rm(transactionRoot, { recursive: true, force: true });
+        }
+        throw error;
+      }
     });
-    const transactionRoot = await fileOperations.mkdtemp(join(paths.userData, '.highest-restore-'));
-    const stage = join(transactionRoot, 'stage');
-    const restoreFileOperations = {
-      lstat: fileOperations.lstat,
-      rename: fileOperations.rename,
-      rm: fileOperations.rm,
-    };
-    let journaled = false;
-    try {
-      await createAtomicJsonStore({ filePath: join(stage, 'catalog.json'), schema: catalogDataSchema }).write(backup.catalog);
-      await createAtomicJsonStore({ filePath: join(stage, 'settings.json'), schema: appSettingsSchema }).write(backup.settings);
-      await createAtomicJsonStore({ filePath: join(stage, 'payment.json'), schema: paymentSettingsSchema }).write(backup.payment);
-      await mkdir(join(stage, 'images'), { recursive: true });
-      for (const image of decodedImages) {
-        const relativeImagePath = image.path.slice('images/'.length);
-        await writeBufferAtomic(join(stage, 'images', ...relativeImagePath.split('/')), image.content);
-      }
-      await prepareRestoreTransaction({ paths, transactionRoot, fileOperations: restoreFileOperations });
-      journaled = true;
-      await commitRestoreTransaction({ paths, transactionRoot, fileOperations: restoreFileOperations });
-    } catch (error) {
-      if (!journaled) {
-        await fileOperations.rm(transactionRoot, { recursive: true, force: true });
-      }
-      throw error;
-    }
   });
 }

@@ -9,9 +9,10 @@ import {
   validateImageContent,
 } from '../storage/imageValidation';
 import { IPC_CHANNELS, type IpcMainLike } from './channels';
+import { createConsistencyLock, type ConsistencyLock } from './consistencyLock';
 import type { IpcSecurity } from './ipcSecurity';
 
-const allowedExtensions = new Set(['.gif', '.jpeg', '.jpg', '.png', '.webp']);
+const allowedExtensions = new Set(['.jpeg', '.jpg', '.png', '.webp']);
 const generatedIdSchema = z.string().regex(/^[A-Za-z0-9-]+$/u);
 
 export interface OpenDialogLike {
@@ -26,6 +27,7 @@ export function registerMediaIpc({
   imagesDirectory,
   dialog,
   security,
+  consistencyLock = createConsistencyLock(),
   createId = randomUUID,
   maxBytes = MAX_IMAGE_BYTES,
 }: {
@@ -33,6 +35,7 @@ export function registerMediaIpc({
   imagesDirectory: string;
   dialog: OpenDialogLike;
   security: IpcSecurity;
+  consistencyLock?: ConsistencyLock;
   createId?: () => string;
   maxBytes?: number;
 }): void {
@@ -41,21 +44,23 @@ export function registerMediaIpc({
     z.tuple([]).parse(args);
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
-      filters: [{ name: 'Images', extensions: ['gif', 'jpeg', 'jpg', 'png', 'webp'] }],
+      filters: [{ name: 'Images', extensions: ['jpeg', 'jpg', 'png', 'webp'] }],
     });
     if (result.canceled || result.filePaths.length === 0) return null;
 
     const [sourcePath] = result.filePaths;
     if (!sourcePath) return null;
-    const extension = extname(sourcePath).toLowerCase();
-    if (!allowedExtensions.has(extension)) throw new Error('Unsupported image extension');
-    const content = await readBoundedRegularFile(sourcePath, maxBytes);
-    const metadata = validateImageContent(content, sourcePath);
-    if (square && metadata.width !== metadata.height) throw new Error('Image must be exactly square');
+    return consistencyLock.withWrite(async () => {
+      const extension = extname(sourcePath).toLowerCase();
+      if (!allowedExtensions.has(extension)) throw new Error('Unsupported image extension');
+      const content = await readBoundedRegularFile(sourcePath, maxBytes);
+      const metadata = await validateImageContent(content, sourcePath);
+      if (square && metadata.width !== metadata.height) throw new Error('Image must be exactly square');
 
-    const targetName = `${generatedIdSchema.parse(createId())}${extension}`;
-    await installBufferIfAbsentAtomic({ content, targetPath: join(imagesDirectory, targetName) });
-    return `images/${targetName}`;
+      const targetName = `${generatedIdSchema.parse(createId())}${extension}`;
+      await installBufferIfAbsentAtomic({ content, targetPath: join(imagesDirectory, targetName) });
+      return `images/${targetName}`;
+    });
   };
 
   ipcMain.handle(IPC_CHANNELS.mediaImportSquare, (event, ...args) => importImage(event, args, true));

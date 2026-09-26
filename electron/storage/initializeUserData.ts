@@ -16,6 +16,7 @@ import {
   paymentSettingsSchema,
   productSchema,
 } from '../../src/domain';
+import { createConsistencyLock, type ConsistencyLock } from '../ipc/consistencyLock';
 import { createAtomicJsonStore } from './atomicJsonStore';
 import {
   copyFileIfAbsentAtomic,
@@ -36,7 +37,7 @@ const catalogDataSchema = z
   })
   .strict();
 
-const allowedImageExtensions = new Set(['.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp']);
+const allowedImageExtensions = new Set(['.jpeg', '.jpg', '.png', '.svg', '.webp']);
 
 export interface InitializeUserDataOptions {
   app: ElectronPathProvider;
@@ -44,6 +45,7 @@ export interface InitializeUserDataOptions {
   dependencies?: {
     imageInstall?: Partial<AtomicFileInstallDependencies>;
   };
+  consistencyLock?: ConsistencyLock;
 }
 
 type CatalogData = z.infer<typeof catalogDataSchema>;
@@ -376,22 +378,25 @@ export async function initializeUserData({
   app,
   defaultsDirectory,
   dependencies,
+  consistencyLock = createConsistencyLock(),
 }: InitializeUserDataOptions): Promise<UserDataPaths> {
   const paths = createUserDataPaths(app);
-  await recoverPendingRestores(paths);
-  const preflight = await preflightDefaults(defaultsDirectory, paths);
+  return consistencyLock.withWrite(async () => {
+    await recoverPendingRestores(paths);
+    const preflight = await preflightDefaults(defaultsDirectory, paths);
 
-  await mkdir(paths.imagesDirectory, { recursive: true });
-  await writeDefaultIfMissing(paths, paths.catalogFile, catalogDataSchema, preflight.catalog);
-  await writeDefaultIfMissing(paths, paths.settingsFile, appSettingsSchema, preflight.settings);
-  await writeDefaultIfMissing(paths, paths.paymentFile, paymentSettingsSchema, preflight.payment);
-  await copyMissingImages(
-    preflight.sourceImagesDirectory,
-    preflight.sourceImagesRealPath,
-    preflight.sourceImageFiles,
-    paths,
-    dependencies?.imageInstall,
-  );
+    await mkdir(paths.imagesDirectory, { recursive: true });
+    await writeDefaultIfMissing(paths, paths.catalogFile, catalogDataSchema, preflight.catalog);
+    await writeDefaultIfMissing(paths, paths.settingsFile, appSettingsSchema, preflight.settings);
+    await writeDefaultIfMissing(paths, paths.paymentFile, paymentSettingsSchema, preflight.payment);
+    await copyMissingImages(
+      preflight.sourceImagesDirectory,
+      preflight.sourceImagesRealPath,
+      preflight.sourceImageFiles,
+      paths,
+      dependencies?.imageInstall,
+    );
 
-  return paths;
+    return paths;
+  });
 }

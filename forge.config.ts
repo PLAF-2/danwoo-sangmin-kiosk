@@ -7,8 +7,24 @@ import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
+const packagedRuntimeRoots = [
+  '/.vite',
+  '/node_modules/@img',
+  '/node_modules/detect-libc',
+  '/node_modules/semver',
+  '/node_modules/sharp',
+];
+
 const config: ForgeConfig = {
-  packagerConfig: { asar: true, extraResource: ['data'] },
+  packagerConfig: {
+    asar: { unpack: '**/node_modules/@img/sharp-*/**/*' },
+    extraResource: ['data'],
+    ignore: (filePath) =>
+      filePath.length > 0 &&
+      !packagedRuntimeRoots.some(
+        (root) => root.startsWith(`${filePath}/`) || filePath === root || filePath.startsWith(`${root}/`),
+      ),
+  },
   rebuildConfig: {},
   makers: [new MakerZIP({}, ['darwin', 'win32']), new MakerRpm({}), new MakerDeb({})],
   plugins: [

@@ -5,7 +5,7 @@ const nonNegativeInteger = z.number().int().nonnegative();
 const money = nonNegativeInteger;
 const timestamp = z.iso.datetime({ offset: true });
 
-const ownedImageExtensions = /\.(?:gif|jpe?g|png|svg|webp)$/iu;
+const ownedImageExtensions = /\.(?:jpe?g|png|svg|webp)$/iu;
 const windowsDeviceName = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9]|conin\$|conout\$|clock\$)(?:\.|$)/iu;
 export const ownedImagePathSchema = z.string().refine((value) => {
   if (!value.startsWith('images/') || value.includes('\\') || value.includes('\0')) return false;

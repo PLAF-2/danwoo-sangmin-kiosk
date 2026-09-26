@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { startApplication } from './bootstrap';
 import { resolveDefaultsDirectory } from './defaultsDirectory';
 import { initializeAdminPassword } from './ipc/adminIpc';
+import { createConsistencyLock } from './ipc/consistencyLock';
 import { registerIpc } from './ipc/registerIpc';
 import { createKioskWindow, type BrowserWindowConstructor } from './mainWindow';
 import { createMediaRequestHandler, registerMediaSchemePrivileges } from './mediaProtocol';
@@ -29,6 +30,7 @@ function openWindow(): void {
 }
 
 void app.whenReady().then(async () => {
+  const consistencyLock = createConsistencyLock();
   const paths = await startApplication<UserDataPaths>({
     initialize: async () => {
       const initialized = await initializeUserData({
@@ -38,6 +40,7 @@ void app.whenReady().then(async () => {
           resourcesPath: process.resourcesPath,
           developmentRoot: process.cwd(),
         }),
+        consistencyLock,
       });
       await initializeAdminPassword({
         credentialFile: initialized.adminCredentialsFile,
@@ -47,7 +50,7 @@ void app.whenReady().then(async () => {
       return initialized;
     },
     register: (initialized) => {
-      protocol.handle('kiosk-media', createMediaRequestHandler(initialized));
+      protocol.handle('kiosk-media', createMediaRequestHandler(initialized, consistencyLock));
       registerIpc({
         ipcMain,
         dialog,
@@ -57,6 +60,7 @@ void app.whenReady().then(async () => {
           pathToFileURL(
             path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
           ).href,
+        consistencyLock,
       });
     },
     createWindow: openWindow,

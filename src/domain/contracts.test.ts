@@ -36,6 +36,7 @@ describe('catalog contracts', () => {
     'images\\secret.png',
     'images//secret.png',
     'images/file.txt',
+    'images/animated.gif',
     'images/C:/secret.png',
     'images/file.png?query=1',
     'https://example.com/image.png',

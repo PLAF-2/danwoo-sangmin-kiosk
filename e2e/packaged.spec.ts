@@ -48,7 +48,7 @@ async function waitForTextFile(filePath: string, processLogs: () => string): Pro
       const value = await readFile(filePath, 'utf8');
       if (value.trim().length > 0) return value;
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      if (!['EBUSY', 'ENOENT'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
