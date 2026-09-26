@@ -73,20 +73,47 @@ describe('order IPC', () => {
     await expect(ipcMain.invoke('orders:create', createOrderInput())).rejects.toThrow();
   });
 
-  it('serializes calls and creates a distinct persisted order per one-call request', async () => {
+  it('deduplicates concurrent and immediate identical duplicate-tap requests', async () => {
     const ipcMain = await setup();
 
     const [first, second] = await Promise.all([
       ipcMain.invoke('orders:create', createOrderInput()),
       ipcMain.invoke('orders:create', createOrderInput()),
     ]);
+    const immediate = await ipcMain.invoke('orders:create', createOrderInput());
 
-    expect([first, second].map((order) => (order as { orderNumber: string }).orderNumber)).toEqual([
-      'ORDER-1',
-      'ORDER-2',
-    ]);
+    expect(first).toEqual(second);
+    expect(immediate).toEqual(first);
+    expect((first as { orderNumber: string }).orderNumber).toBe('ORDER-1');
     await expect(ipcMain.invoke('orders:read', 'ORDER-1')).resolves.toEqual(first);
-    await expect(ipcMain.invoke('orders:read', 'ORDER-2')).resolves.toEqual(second);
+    await expect(ipcMain.invoke('orders:read', 'ORDER-2')).resolves.toBeNull();
+  });
+
+  it('creates a new order after the duplicate-tap window expires', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'highest-orders-'));
+    directories.push(directory);
+    const catalogFile = join(directory, 'catalog.json');
+    await createAtomicJsonStore({ filePath: catalogFile, schema: catalogDataSchema }).write(
+      createCatalogData(),
+    );
+    const ipcMain = createTestIpcMain();
+    let milliseconds = Date.parse('2026-09-26T00:00:00.000Z');
+    let sequence = 0;
+    registerOrderIpc({
+      ipcMain,
+      catalogFile,
+      ordersDirectory: join(directory, 'orders'),
+      createOrderNumber: () => `ORDER-${++sequence}`,
+      now: () => new Date(milliseconds),
+      duplicateTapWindowMs: 750,
+    });
+
+    const first = await ipcMain.invoke('orders:create', createOrderInput());
+    milliseconds += 751;
+    const later = await ipcMain.invoke('orders:create', createOrderInput());
+
+    expect((first as { orderNumber: string }).orderNumber).toBe('ORDER-1');
+    expect((later as { orderNumber: string }).orderNumber).toBe('ORDER-2');
   });
 
   it('rejects unsafe order numbers and extra read arguments', async () => {

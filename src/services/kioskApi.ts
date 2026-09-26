@@ -6,6 +6,22 @@ import type {
   PaymentSettings,
 } from '../domain';
 
+export function toKioskMediaUrl(storedPath: string): string {
+  if (storedPath.length === 0) return '';
+  if (storedPath.includes('\\')) throw new Error(`Unsafe kiosk media path: ${storedPath}`);
+
+  const segments = storedPath.split('/');
+  if (
+    segments[0] !== 'images' ||
+    segments.length < 2 ||
+    segments.some((segment) => segment.length === 0 || segment === '.' || segment === '..')
+  ) {
+    throw new Error(`Unsafe kiosk media path: ${storedPath}`);
+  }
+
+  return `kiosk-media://images/${segments.slice(1).map(encodeURIComponent).join('/')}`;
+}
+
 export interface KioskApi {
   catalog: {
     read(): Promise<CatalogData>;
@@ -22,10 +38,7 @@ export interface KioskApi {
     importWelcomeImage(): Promise<string | null>;
   };
   orders: {
-    /**
-     * Creates one persisted order per invocation. CreateOrderInput has no idempotency token,
-     * so callers must lock the final action and invoke this method exactly once per checkout.
-     */
+    /** Deduplicates concurrent and immediate identical duplicate-tap requests. */
     create(input: CreateOrderInput): Promise<Order>;
     read(orderNumber: string): Promise<Order | null>;
   };

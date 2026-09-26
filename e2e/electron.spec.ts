@@ -9,7 +9,7 @@ test('boots Electron with only the typed preload boundary exposed', async () => 
     await expect(window.getByRole('heading', { name: 'HIGHEST Kiosk' })).toBeVisible();
     await expect(window.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
       'content',
-      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'",
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: kiosk-media:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'",
     );
 
     const exposedGlobals = await window.evaluate(() => {

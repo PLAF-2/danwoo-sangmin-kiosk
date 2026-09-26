@@ -1,12 +1,16 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, protocol } from 'electron';
 import path from 'node:path';
 
 import { startApplication } from './bootstrap';
+import { resolveDefaultsDirectory } from './defaultsDirectory';
 import { initializeAdminPassword } from './ipc/adminIpc';
 import { registerIpc } from './ipc/registerIpc';
 import { createKioskWindow, type BrowserWindowConstructor } from './mainWindow';
+import { createMediaRequestHandler, registerMediaSchemePrivileges } from './mediaProtocol';
 import { initializeUserData } from './storage/initializeUserData';
 import type { UserDataPaths } from './storage/paths';
+
+registerMediaSchemePrivileges(protocol);
 
 function openWindow(): void {
   createKioskWindow({
@@ -28,7 +32,11 @@ void app.whenReady().then(async () => {
     initialize: async () => {
       const initialized = await initializeUserData({
         app,
-        defaultsDirectory: path.join(__dirname, '../../data/defaults'),
+        defaultsDirectory: resolveDefaultsDirectory({
+          isPackaged: app.isPackaged,
+          resourcesPath: process.resourcesPath,
+          developmentRoot: process.cwd(),
+        }),
       });
       await initializeAdminPassword({
         credentialFile: initialized.adminCredentialsFile,
@@ -37,7 +45,10 @@ void app.whenReady().then(async () => {
       });
       return initialized;
     },
-    register: (initialized) => registerIpc({ ipcMain, dialog, paths: initialized }),
+    register: (initialized) => {
+      protocol.handle('kiosk-media', createMediaRequestHandler(initialized));
+      registerIpc({ ipcMain, dialog, paths: initialized });
+    },
     createWindow: openWindow,
     quit: () => app.quit(),
     log: console,

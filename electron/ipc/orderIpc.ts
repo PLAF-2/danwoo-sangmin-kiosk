@@ -26,18 +26,34 @@ export function registerOrderIpc({
   ordersDirectory,
   now = () => new Date(),
   createOrderNumber = () => defaultOrderNumber(now()),
+  duplicateTapWindowMs = 750,
 }: {
   ipcMain: IpcMainLike;
   catalogFile: string;
   ordersDirectory: string;
   now?: () => Date;
   createOrderNumber?: () => string;
+  duplicateTapWindowMs?: number;
 }): void {
   const catalogStore = createAtomicJsonStore({ filePath: catalogFile, schema: catalogDataSchema });
   let creationQueue: Promise<void> = Promise.resolve();
+  const inFlight = new Map<string, Promise<Order>>();
+  const recent = new Map<string, { createdAt: number; order: Order }>();
 
   ipcMain.handle(IPC_CHANNELS.ordersCreate, (_event, ...args) => {
     const [input] = z.tuple([createOrderInputSchema]).parse(args);
+    const fingerprint = JSON.stringify(input);
+    const pending = inFlight.get(fingerprint);
+    if (pending) return pending;
+
+    const currentTime = now().getTime();
+    for (const [recentFingerprint, entry] of recent) {
+      if (currentTime - entry.createdAt > duplicateTapWindowMs) recent.delete(recentFingerprint);
+    }
+    const duplicate = recent.get(fingerprint);
+    if (duplicate && currentTime - duplicate.createdAt <= duplicateTapWindowMs) {
+      return Promise.resolve(duplicate.order);
+    }
 
     const operation = creationQueue.then(async () => {
       const catalog = await catalogStore.read();
@@ -79,11 +95,15 @@ export function registerOrderIpc({
         filePath: join(ordersDirectory, `${orderNumber}.json`),
         schema: orderSchema,
       }).write(order);
+      recent.set(fingerprint, { createdAt: now().getTime(), order });
       return order;
     });
 
-    // CreateOrderInput deliberately has no idempotency token. Calls are serialized so
-    // each renderer invocation creates exactly one order and receives its own result.
+    inFlight.set(fingerprint, operation);
+    const clearInFlight = () => {
+      if (inFlight.get(fingerprint) === operation) inFlight.delete(fingerprint);
+    };
+    void operation.then(clearInFlight, clearInFlight);
     creationQueue = operation.then(
       () => undefined,
       () => undefined,

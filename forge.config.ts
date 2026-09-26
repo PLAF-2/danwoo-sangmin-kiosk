@@ -8,7 +8,7 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 const config: ForgeConfig = {
-  packagerConfig: { asar: true },
+  packagerConfig: { asar: true, extraResource: ['data'] },
   rebuildConfig: {},
   makers: [new MakerZIP({}, ['darwin', 'win32']), new MakerRpm({}), new MakerDeb({})],
   plugins: [
