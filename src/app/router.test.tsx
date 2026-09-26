@@ -1,0 +1,56 @@
+import { cleanup, render, screen } from '@testing-library/react';
+import { RouterProvider } from 'react-router-dom';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { createAppMemoryRouter, createAppRouter } from './router';
+
+const routeCases = [
+  ['/', 'HIGHEST Kiosk'],
+  ['/shop', 'Shop placeholder'],
+  ['/products/horizon-album', 'Product placeholder: horizon-album'],
+  ['/checkout', 'Checkout placeholder'],
+  ['/processing', 'Processing placeholder'],
+  ['/complete/HK-20260926-001', 'Order complete placeholder: HK-20260926-001'],
+  ['/admin/login', 'Admin login placeholder'],
+  ['/admin/products', 'Admin products placeholder'],
+  ['/admin/categories', 'Admin categories placeholder'],
+  ['/admin/welcome', 'Admin welcome placeholder'],
+  ['/admin/payment', 'Admin payment placeholder'],
+  ['/admin/system', 'Admin system placeholder'],
+] as const;
+
+describe('application router', () => {
+  afterEach(() => {
+    cleanup();
+    window.history.replaceState(null, '', '/');
+  });
+
+  it.each(routeCases)('renders the placeholder for %s', async (path, heading) => {
+    const router = createAppMemoryRouter([path]);
+
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
+    router.dispose();
+  });
+
+  it('renders safe navigation for an unknown route', async () => {
+    const router = createAppMemoryRouter(['/does-not-exist']);
+
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Return to start' })).toHaveAttribute('href', '/');
+    router.dispose();
+  });
+
+  it('loads the logical path from a packaged-style hash URL', async () => {
+    window.history.replaceState(null, '', '/#/shop');
+    const router = createAppRouter();
+
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByRole('heading', { name: 'Shop placeholder' })).toBeInTheDocument();
+    router.dispose();
+  });
+});

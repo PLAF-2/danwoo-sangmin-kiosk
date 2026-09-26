@@ -1,3 +1,1 @@
-export function App() {
-  return <h1>HIGHEST Kiosk</h1>;
-}
+export { App } from '../app/App';
