@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { initializeAdminPassword, registerAdminIpc } from './adminIpc';
-import { createTestIpcMain } from './testHelpers';
+import { createTestIpcEvent, createTestIpcMain, createTestIpcSecurity } from './testHelpers';
 
 const directories: string[] = [];
 
@@ -25,7 +25,7 @@ describe('admin password IPC', () => {
 
     await initializeAdminPassword({ credentialFile: path, initialPassword: undefined, log: { error } });
     const ipcMain = createTestIpcMain();
-    registerAdminIpc({ ipcMain, credentialFile: path });
+    registerAdminIpc({ ipcMain, credentialFile: path, security: createTestIpcSecurity() });
 
     await expect(ipcMain.invoke('admin:authenticate', 'admin')).resolves.toBe(false);
     expect(error).toHaveBeenCalledWith(expect.stringContaining('KIOSK_ADMIN_INITIAL_PASSWORD'));
@@ -44,14 +44,21 @@ describe('admin password IPC', () => {
     expect(JSON.parse(serialized)).toMatchObject({ algorithm: 'scrypt' });
 
     const ipcMain = createTestIpcMain();
-    registerAdminIpc({ ipcMain, credentialFile: path });
-    await expect(ipcMain.invoke('admin:authenticate', 'wrong')).resolves.toBe(false);
-    await expect(ipcMain.invoke('admin:authenticate', 'initial-secret')).resolves.toBe(true);
+    const security = createTestIpcSecurity();
+    const event = createTestIpcEvent();
+    registerAdminIpc({ ipcMain, credentialFile: path, security });
+    await expect(ipcMain.invokeFrom(event, 'admin:authenticate', 'wrong')).resolves.toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    await expect(ipcMain.invokeFrom(event, 'admin:authenticate', 'initial-secret')).resolves.toBe(true);
     await expect(
-      ipcMain.invoke('admin:change-password', 'initial-secret', 'new-secure-password'),
+      ipcMain.invokeFrom(event, 'admin:change-password', 'initial-secret', 'new-secure-password'),
     ).resolves.toBeUndefined();
-    await expect(ipcMain.invoke('admin:authenticate', 'initial-secret')).resolves.toBe(false);
-    await expect(ipcMain.invoke('admin:authenticate', 'new-secure-password')).resolves.toBe(true);
+    await expect(ipcMain.invokeFrom(event, 'admin:change-password', 'new-secure-password', 'another-password')).rejects.toThrow(
+      'Admin authentication required',
+    );
+    await expect(ipcMain.invokeFrom(event, 'admin:authenticate', 'initial-secret')).resolves.toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    await expect(ipcMain.invokeFrom(event, 'admin:authenticate', 'new-secure-password')).resolves.toBe(true);
   });
 
   it('rejects invalid boundary inputs and an incorrect current password', async () => {
@@ -62,12 +69,16 @@ describe('admin password IPC', () => {
       log: { error: vi.fn() },
     });
     const ipcMain = createTestIpcMain();
-    registerAdminIpc({ ipcMain, credentialFile: path });
+    const security = createTestIpcSecurity();
+    const event = createTestIpcEvent();
+    registerAdminIpc({ ipcMain, credentialFile: path, security });
 
-    await expect(ipcMain.invoke('admin:authenticate', 'ok', 'extra')).rejects.toThrow();
-    await expect(ipcMain.invoke('admin:change-password', 'wrong', 'new-secure-password')).rejects.toThrow(
+    await expect(ipcMain.invokeFrom(event, 'admin:authenticate', 'ok', 'extra')).rejects.toThrow();
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    await expect(ipcMain.invokeFrom(event, 'admin:authenticate', 'initial-secret')).resolves.toBe(true);
+    await expect(ipcMain.invokeFrom(event, 'admin:change-password', 'wrong', 'new-secure-password')).rejects.toThrow(
       'Current password is incorrect',
     );
-    await expect(ipcMain.invoke('admin:change-password', 'initial-secret', 'short')).rejects.toThrow();
+    await expect(ipcMain.invokeFrom(event, 'admin:change-password', 'initial-secret', 'short')).rejects.toThrow();
   });
 });

@@ -4,7 +4,6 @@ import {
   appSettingsSchema,
   cartItemSchema,
   categorySchema,
-  paymentModeSchema,
   paymentSettingsSchema,
   productSchema,
 } from '../../src/domain';
@@ -42,8 +41,8 @@ export const catalogDataSchema = z
 
 export const createOrderInputSchema = z
   .object({
+    requestId: z.uuid(),
     items: z.array(cartItemSchema).min(1),
-    paymentMode: paymentModeSchema,
   })
   .strict()
   .refine(({ items }) => new Set(items.map(({ productId }) => productId)).size === items.length, {

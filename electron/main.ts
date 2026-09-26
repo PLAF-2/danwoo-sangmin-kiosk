@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, protocol } from 'electron';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { startApplication } from './bootstrap';
 import { resolveDefaultsDirectory } from './defaultsDirectory';
@@ -47,7 +48,16 @@ void app.whenReady().then(async () => {
     },
     register: (initialized) => {
       protocol.handle('kiosk-media', createMediaRequestHandler(initialized));
-      registerIpc({ ipcMain, dialog, paths: initialized });
+      registerIpc({
+        ipcMain,
+        dialog,
+        paths: initialized,
+        trustedRendererUrl:
+          MAIN_WINDOW_VITE_DEV_SERVER_URL ??
+          pathToFileURL(
+            path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+          ).href,
+      });
     },
     createWindow: openWindow,
     quit: () => app.quit(),

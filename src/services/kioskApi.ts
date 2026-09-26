@@ -5,20 +5,15 @@ import type {
   Order,
   PaymentSettings,
 } from '../domain';
+import { ownedImagePathSchema } from '../domain';
 
 export function toKioskMediaUrl(storedPath: string): string {
   if (storedPath.length === 0) return '';
-  if (storedPath.includes('\\')) throw new Error(`Unsafe kiosk media path: ${storedPath}`);
-
-  const segments = storedPath.split('/');
-  if (
-    segments[0] !== 'images' ||
-    segments.length < 2 ||
-    segments.some((segment) => segment.length === 0 || segment === '.' || segment === '..')
-  ) {
+  const parsed = ownedImagePathSchema.safeParse(storedPath);
+  if (!parsed.success) {
     throw new Error(`Unsafe kiosk media path: ${storedPath}`);
   }
-
+  const segments = parsed.data.split('/');
   return `kiosk-media://images/${segments.slice(1).map(encodeURIComponent).join('/')}`;
 }
 

@@ -1,13 +1,24 @@
-import { mkdir, open, readFile, readdir, rename, unlink } from 'node:fs/promises';
-import type { Dirent } from 'node:fs';
-import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
+import {
+  lstat as nodeLstat,
+  mkdir,
+  mkdtemp as nodeMkdtemp,
+  open,
+  readFile,
+  readdir,
+  rename as nodeRename,
+  rm as nodeRm,
+  unlink,
+} from 'node:fs/promises';
+import type { Dirent, Stats } from 'node:fs';
+import { dirname, extname, join, relative } from 'node:path';
 import { z } from 'zod';
 
-import { appSettingsSchema, paymentSettingsSchema } from '../../src/domain';
+import { appSettingsSchema, ownedImagePathSchema, paymentSettingsSchema } from '../../src/domain';
 import { createUniqueTemporaryPath, syncDirectoryBestEffort } from '../storage/atomicFileOperations';
 import { createAtomicJsonStore } from '../storage/atomicJsonStore';
 import type { UserDataPaths } from '../storage/paths';
 import { IPC_CHANNELS, type IpcMainLike } from './channels';
+import type { IpcSecurity } from './ipcSecurity';
 import { catalogDataSchema } from './schemas';
 
 const allowedImageExtensions = new Set(['.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp']);
@@ -18,20 +29,8 @@ const base64Schema = z.string().refine((value) => {
   return Buffer.from(value, 'base64').toString('base64') === value;
 }, 'invalid base64');
 
-function isSafeImagePath(value: string): boolean {
-  if (value.length === 0 || isAbsolute(value) || value.includes('\\')) return false;
-  const normalized = value.split('/');
-  return (
-    normalized.every((part) => part.length > 0 && part !== '.' && part !== '..') &&
-    allowedImageExtensions.has(extname(value).toLowerCase())
-  );
-}
-
 const backupImageSchema = z
-  .object({
-    path: z.string().refine(isSafeImagePath, 'unsafe image path'),
-    contentBase64: base64Schema,
-  })
+  .object({ path: ownedImagePathSchema, contentBase64: base64Schema })
   .strict();
 
 const backupSchema = z
@@ -51,17 +50,13 @@ const backupSchema = z
       }
       imagePaths.add(image.path);
     }
-
     const references = [
       backup.settings.welcomeBackgroundImage,
       backup.payment.qrImage,
-      ...backup.catalog.products.flatMap((product) => [
-        product.thumbnailImage,
-        ...product.detailImages,
-      ]),
+      ...backup.catalog.products.flatMap((product) => [product.thumbnailImage, ...product.detailImages]),
     ].filter(Boolean);
     for (const reference of references) {
-      if (!reference.startsWith('images/') || !imagePaths.has(reference.slice('images/'.length))) {
+      if (!imagePaths.has(reference)) {
         context.addIssue({ code: 'custom', path: ['images'], message: `missing image: ${reference}` });
       }
     }
@@ -80,6 +75,20 @@ export interface BackupDialogLike {
   }): Promise<{ canceled: boolean; filePaths: string[] }>;
 }
 
+export interface BackupFileOperations {
+  lstat(path: string): Promise<Pick<Stats, 'isFile' | 'isDirectory' | 'isSymbolicLink'>>;
+  mkdtemp(prefix: string): Promise<string>;
+  rename(from: string, to: string): Promise<void>;
+  rm(path: string, options: { recursive: true; force: true }): Promise<void>;
+}
+
+const defaultFileOperations: BackupFileOperations = {
+  lstat: nodeLstat,
+  mkdtemp: nodeMkdtemp,
+  rename: nodeRename,
+  rm: nodeRm,
+};
+
 async function listImages(directory: string, root = directory): Promise<Backup['images']> {
   let entries: Dirent<string>[];
   try {
@@ -88,7 +97,6 @@ async function listImages(directory: string, root = directory): Promise<Backup['
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
     throw error;
   }
-
   const images: Backup['images'] = [];
   for (const entry of entries) {
     const path = join(directory, entry.name);
@@ -98,8 +106,11 @@ async function listImages(directory: string, root = directory): Promise<Backup['
       continue;
     }
     if (!entry.isFile()) throw new Error(`Image path is not a regular file: ${path}`);
-    const imagePath = relative(root, path).replaceAll('\\', '/');
-    if (!isSafeImagePath(imagePath)) throw new Error(`Unsupported image in user data: ${imagePath}`);
+    const relativePath = relative(root, path).replaceAll('\\', '/');
+    const imagePath = ownedImagePathSchema.parse(`images/${relativePath}`);
+    if (!allowedImageExtensions.has(extname(imagePath).toLowerCase())) {
+      throw new Error(`Unsupported image in user data: ${imagePath}`);
+    }
     images.push({ path: imagePath, contentBase64: (await readFile(path)).toString('base64') });
   }
   return images.sort((left, right) => left.path.localeCompare(right.path));
@@ -116,10 +127,69 @@ async function writeBufferAtomic(path: string, content: Buffer): Promise<void> {
     await handle.close();
   }
   try {
-    await rename(temporaryPath, path);
+    await nodeRename(temporaryPath, path);
     await syncDirectoryBestEffort(dirname(path));
   } catch (error) {
     await unlink(temporaryPath).catch(() => undefined);
+    throw error;
+  }
+}
+
+async function pathExistsAsOwnedType(
+  path: string,
+  expected: 'file' | 'directory',
+  fileOperations: BackupFileOperations,
+): Promise<boolean> {
+  try {
+    const stats = await fileOperations.lstat(path);
+    if (stats.isSymbolicLink()) throw new Error(`Refusing to replace linked backup target: ${path}`);
+    if (expected === 'file' ? !stats.isFile() : !stats.isDirectory()) {
+      throw new Error(`Unexpected backup target type: ${path}`);
+    }
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw error;
+  }
+}
+
+async function commitRestore({
+  paths,
+  stage,
+  rollback,
+  fileOperations,
+}: {
+  paths: UserDataPaths;
+  stage: string;
+  rollback: string;
+  fileOperations: BackupFileOperations;
+}): Promise<void> {
+  const targets = [
+    { live: paths.catalogFile, staged: join(stage, 'catalog.json'), saved: join(rollback, 'catalog.json'), type: 'file' as const },
+    { live: paths.settingsFile, staged: join(stage, 'settings.json'), saved: join(rollback, 'settings.json'), type: 'file' as const },
+    { live: paths.paymentFile, staged: join(stage, 'payment.json'), saved: join(rollback, 'payment.json'), type: 'file' as const },
+    { live: paths.imagesDirectory, staged: join(stage, 'images'), saved: join(rollback, 'images'), type: 'directory' as const },
+  ];
+  const changes: Array<{ live: string; saved: string; originalMoved: boolean; installed: boolean }> = [];
+  try {
+    for (const target of targets) {
+      const change = { live: target.live, saved: target.saved, originalMoved: false, installed: false };
+      changes.push(change);
+      await mkdir(dirname(target.saved), { recursive: true });
+      if (await pathExistsAsOwnedType(target.live, target.type, fileOperations)) {
+        await fileOperations.rename(target.live, target.saved);
+        change.originalMoved = true;
+      }
+      await fileOperations.rename(target.staged, target.live);
+      change.installed = true;
+    }
+  } catch (error) {
+    for (const change of changes.reverse()) {
+      if (change.installed) {
+        await fileOperations.rm(change.live, { recursive: true, force: true });
+      }
+      if (change.originalMoved) await fileOperations.rename(change.saved, change.live);
+    }
     throw error;
   }
 }
@@ -128,23 +198,28 @@ export function registerBackupIpc({
   ipcMain,
   paths,
   dialog,
+  security,
+  fileOperations: fileOperationOverrides,
 }: {
   ipcMain: IpcMainLike;
   paths: UserDataPaths;
   dialog: BackupDialogLike;
+  security: IpcSecurity;
+  fileOperations?: Partial<BackupFileOperations>;
 }): void {
+  const fileOperations = { ...defaultFileOperations, ...fileOperationOverrides };
   const catalogStore = createAtomicJsonStore({ filePath: paths.catalogFile, schema: catalogDataSchema });
   const settingsStore = createAtomicJsonStore({ filePath: paths.settingsFile, schema: appSettingsSchema });
   const paymentStore = createAtomicJsonStore({ filePath: paths.paymentFile, schema: paymentSettingsSchema });
 
-  ipcMain.handle(IPC_CHANNELS.backupExport, async (_event, ...args) => {
+  ipcMain.handle(IPC_CHANNELS.backupExport, async (event, ...args) => {
+    security.authorizeAdmin(event);
     z.tuple([]).parse(args);
     const result = await dialog.showSaveDialog({
       defaultPath: 'highest-kiosk-backup.json',
       filters: [{ name: 'HIGHEST Kiosk Backup', extensions: ['json'] }],
     });
     if (result.canceled || !result.filePath) return null;
-
     const backup = backupSchema.parse({
       version: 1,
       catalog: await catalogStore.read(),
@@ -156,7 +231,8 @@ export function registerBackupIpc({
     return result.filePath;
   });
 
-  ipcMain.handle(IPC_CHANNELS.backupImport, async (_event, ...args) => {
+  ipcMain.handle(IPC_CHANNELS.backupImport, async (event, ...args) => {
+    security.authorizeAdmin(event);
     z.tuple([]).parse(args);
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
@@ -164,18 +240,27 @@ export function registerBackupIpc({
     });
     const [filePath] = result.filePaths;
     if (result.canceled || !filePath) return;
+    const sourceStats = await fileOperations.lstat(filePath);
+    if (!sourceStats.isFile() || sourceStats.isSymbolicLink()) {
+      throw new Error('Backup must be a regular file');
+    }
 
-    // Parse and decode the complete archive before the first write. An invalid archive
-    // therefore leaves every existing JSON file and owned image untouched.
     const backup = backupSchema.parse(JSON.parse(await readFile(filePath, 'utf8')));
-    const decodedImages = backup.images.map((image) => ({
-      path: resolve(paths.imagesDirectory, image.path),
-      content: Buffer.from(image.contentBase64, 'base64'),
-    }));
-
-    for (const image of decodedImages) await writeBufferAtomic(image.path, image.content);
-    await catalogStore.write(backup.catalog);
-    await settingsStore.write(backup.settings);
-    await paymentStore.write(backup.payment);
+    const transactionRoot = await fileOperations.mkdtemp(join(dirname(paths.userData), '.highest-restore-'));
+    const stage = join(transactionRoot, 'stage');
+    const rollback = join(transactionRoot, 'rollback');
+    try {
+      await createAtomicJsonStore({ filePath: join(stage, 'catalog.json'), schema: catalogDataSchema }).write(backup.catalog);
+      await createAtomicJsonStore({ filePath: join(stage, 'settings.json'), schema: appSettingsSchema }).write(backup.settings);
+      await createAtomicJsonStore({ filePath: join(stage, 'payment.json'), schema: paymentSettingsSchema }).write(backup.payment);
+      await mkdir(join(stage, 'images'), { recursive: true });
+      for (const image of backup.images) {
+        const relativeImagePath = image.path.slice('images/'.length);
+        await writeBufferAtomic(join(stage, 'images', ...relativeImagePath.split('/')), Buffer.from(image.contentBase64, 'base64'));
+      }
+      await commitRestore({ paths, stage, rollback, fileOperations });
+    } finally {
+      await fileOperations.rm(transactionRoot, { recursive: true, force: true });
+    }
   });
 }

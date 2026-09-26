@@ -2,12 +2,21 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-import { orderSchema, type Order, type OrderStatus } from '../../src/domain';
+import {
+  orderSchema,
+  paymentSettingsSchema,
+  type Order,
+  type OrderStatus,
+} from '../../src/domain';
 import { createAtomicJsonStore } from '../storage/atomicJsonStore';
 import { IPC_CHANNELS, type IpcMainLike } from './channels';
+import type { IpcSecurity } from './ipcSecurity';
 import { catalogDataSchema, createOrderInputSchema } from './schemas';
 
 const orderNumberSchema = z.string().regex(/^[A-Za-z0-9-]{1,100}$/u);
+const requestRecordSchema = z
+  .object({ requestId: z.uuid(), fingerprint: z.string().min(1), order: orderSchema })
+  .strict();
 
 function defaultOrderNumber(now: Date): string {
   const date = now.toISOString().slice(0, 10).replaceAll('-', '');
@@ -20,43 +29,67 @@ function statusFor(paymentMode: Order['paymentMode']): OrderStatus {
   return 'processing';
 }
 
+async function readIfPresent<T>(store: ReturnType<typeof createAtomicJsonStore<T>>): Promise<T | null> {
+  try {
+    return await store.read();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
 export function registerOrderIpc({
   ipcMain,
   catalogFile,
+  paymentFile,
   ordersDirectory,
+  security,
   now = () => new Date(),
   createOrderNumber = () => defaultOrderNumber(now()),
-  duplicateTapWindowMs = 750,
 }: {
   ipcMain: IpcMainLike;
   catalogFile: string;
+  paymentFile: string;
   ordersDirectory: string;
+  security: IpcSecurity;
   now?: () => Date;
   createOrderNumber?: () => string;
-  duplicateTapWindowMs?: number;
 }): void {
   const catalogStore = createAtomicJsonStore({ filePath: catalogFile, schema: catalogDataSchema });
+  const paymentStore = createAtomicJsonStore({ filePath: paymentFile, schema: paymentSettingsSchema });
   let creationQueue: Promise<void> = Promise.resolve();
-  const inFlight = new Map<string, Promise<Order>>();
-  const recent = new Map<string, { createdAt: number; order: Order }>();
+  const inFlight = new Map<string, { fingerprint: string; promise: Promise<Order> }>();
 
-  ipcMain.handle(IPC_CHANNELS.ordersCreate, (_event, ...args) => {
+  ipcMain.handle(IPC_CHANNELS.ordersCreate, (event, ...args) => {
+    security.authorizePublic(event);
     const [input] = z.tuple([createOrderInputSchema]).parse(args);
-    const fingerprint = JSON.stringify(input);
-    const pending = inFlight.get(fingerprint);
-    if (pending) return pending;
-
-    const currentTime = now().getTime();
-    for (const [recentFingerprint, entry] of recent) {
-      if (currentTime - entry.createdAt > duplicateTapWindowMs) recent.delete(recentFingerprint);
-    }
-    const duplicate = recent.get(fingerprint);
-    if (duplicate && currentTime - duplicate.createdAt <= duplicateTapWindowMs) {
-      return Promise.resolve(duplicate.order);
+    const fingerprint = JSON.stringify(input.items);
+    const pending = inFlight.get(input.requestId);
+    if (pending) {
+      if (pending.fingerprint !== fingerprint) {
+        throw new Error('requestId was already used with different order data');
+      }
+      return pending.promise;
     }
 
     const operation = creationQueue.then(async () => {
-      const catalog = await catalogStore.read();
+      const requestStore = createAtomicJsonStore({
+        filePath: join(ordersDirectory, '.requests', `${input.requestId}.json`),
+        schema: requestRecordSchema,
+      });
+      const existing = await readIfPresent(requestStore);
+      if (existing) {
+        if (existing.fingerprint !== fingerprint) {
+          throw new Error('requestId was already used with different order data');
+        }
+        await createAtomicJsonStore({
+          filePath: join(ordersDirectory, `${existing.order.orderNumber}.json`),
+          schema: orderSchema,
+        }).writeIfAbsent(existing.order);
+        return existing.order;
+      }
+
+      const [catalog, payment] = await Promise.all([catalogStore.read(), paymentStore.read()]);
       const products = new Map(catalog.products.map((product) => [product.id, product]));
       const items = input.items.map(({ productId, quantity }) => {
         const product = products.get(productId);
@@ -86,22 +119,28 @@ export function registerOrderIpc({
         subtotal,
         discount: 0,
         total: subtotal,
-        paymentMode: input.paymentMode,
-        status: statusFor(input.paymentMode),
+        paymentMode: payment.mode,
+        status: statusFor(payment.mode),
         createdAt: now().toISOString(),
       });
-
+      const record = { requestId: input.requestId, fingerprint, order };
+      if (!(await requestStore.writeIfAbsent(record))) {
+        const winner = await requestStore.read();
+        if (winner.fingerprint !== fingerprint) {
+          throw new Error('requestId was already used with different order data');
+        }
+        return winner.order;
+      }
       await createAtomicJsonStore({
         filePath: join(ordersDirectory, `${orderNumber}.json`),
         schema: orderSchema,
-      }).write(order);
-      recent.set(fingerprint, { createdAt: now().getTime(), order });
+      }).writeIfAbsent(order);
       return order;
     });
 
-    inFlight.set(fingerprint, operation);
+    inFlight.set(input.requestId, { fingerprint, promise: operation });
     const clearInFlight = () => {
-      if (inFlight.get(fingerprint) === operation) inFlight.delete(fingerprint);
+      if (inFlight.get(input.requestId)?.promise === operation) inFlight.delete(input.requestId);
     };
     void operation.then(clearInFlight, clearInFlight);
     creationQueue = operation.then(
@@ -111,16 +150,14 @@ export function registerOrderIpc({
     return operation;
   });
 
-  ipcMain.handle(IPC_CHANNELS.ordersRead, async (_event, ...args) => {
+  ipcMain.handle(IPC_CHANNELS.ordersRead, async (event, ...args) => {
+    security.authorizePublic(event);
     const [orderNumber] = z.tuple([orderNumberSchema]).parse(args);
-    try {
-      return await createAtomicJsonStore({
+    return readIfPresent(
+      createAtomicJsonStore({
         filePath: join(ordersDirectory, `${orderNumber}.json`),
         schema: orderSchema,
-      }).read();
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
-      throw error;
-    }
+      }),
+    );
   });
 }

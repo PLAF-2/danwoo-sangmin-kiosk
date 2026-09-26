@@ -5,6 +5,26 @@ const nonNegativeInteger = z.number().int().nonnegative();
 const money = nonNegativeInteger;
 const timestamp = z.iso.datetime({ offset: true });
 
+const ownedImageExtensions = /\.(?:gif|jpe?g|png|svg|webp)$/iu;
+export const ownedImagePathSchema = z.string().refine((value) => {
+  if (!value.startsWith('images/') || value.includes('\\') || value.includes('\0')) return false;
+  const segments = value.split('/');
+  return (
+    segments.length >= 2 &&
+    segments.every(
+      (segment) =>
+        segment.length > 0 &&
+        segment !== '.' &&
+        segment !== '..' &&
+        ![...segment].some((character) => character.charCodeAt(0) <= 0x1f) &&
+        !/[<>:"|?*]/u.test(segment) &&
+        !/[. ]$/u.test(segment),
+    ) &&
+    ownedImageExtensions.test(value)
+  );
+}, 'Unsafe image path');
+const optionalOwnedImagePathSchema = z.union([z.literal(''), ownedImagePathSchema]);
+
 export const paymentModeSchema = z.enum(['instant', 'bankQr', 'simulation']);
 export type PaymentMode = z.infer<typeof paymentModeSchema>;
 
@@ -35,8 +55,8 @@ export const productSchema = z
     name: nonEmptyString,
     price: money,
     categoryId: nonEmptyString,
-    thumbnailImage: nonEmptyString,
-    detailImages: z.array(nonEmptyString),
+    thumbnailImage: ownedImagePathSchema,
+    detailImages: z.array(ownedImagePathSchema),
     description: z.string(),
     specifications: z.array(productSpecificationSchema),
     saleStatus: saleStatusSchema,
@@ -66,7 +86,7 @@ export type CartItem = z.infer<typeof cartItemSchema>;
 export const orderItemSchema = cartItemSchema
   .extend({
     name: nonEmptyString,
-    thumbnailImage: nonEmptyString,
+    thumbnailImage: ownedImagePathSchema,
   })
   .strict();
 export type OrderItem = z.infer<typeof orderItemSchema>;
@@ -119,7 +139,7 @@ export type ImagePosition = z.infer<typeof imagePositionSchema>;
 
 export const appSettingsSchema = z
   .object({
-    welcomeBackgroundImage: z.string(),
+    welcomeBackgroundImage: optionalOwnedImagePathSchema,
     welcomeImagePosition: imagePositionSchema,
     welcomeImageScale: z.number().positive().max(5),
     welcomeLogoVisible: z.boolean(),
@@ -141,7 +161,7 @@ export const paymentSettingsSchema = z
     bankName: z.string(),
     accountNumber: z.string(),
     accountHolder: z.string(),
-    qrImage: z.string(),
+    qrImage: optionalOwnedImagePathSchema,
     instructionText: nonEmptyString,
     processingSeconds: z.number().int().min(1).max(5),
     simulationResult: z.enum(['success', 'failure']),
@@ -164,6 +184,6 @@ export const paymentSettingsSchema = z
 export type PaymentSettings = z.infer<typeof paymentSettingsSchema>;
 
 export interface CreateOrderInput {
+  requestId: string;
   items: CartItem[];
-  paymentMode: PaymentMode;
 }

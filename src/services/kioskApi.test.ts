@@ -10,7 +10,7 @@ describe('toKioskMediaUrl', () => {
     expect(toKioskMediaUrl('')).toBe('');
   });
 
-  it.each(['../secret.png', 'images/../../secret.png', 'other/image.png', 'C:\\secret.png'])(
+  it.each(['../secret.png', 'images/../../secret.png', 'other/image.png', 'C:\\secret.png', 'images/file.txt'])(
     'rejects unsafe stored path %s',
     (path) => expect(() => toKioskMediaUrl(path)).toThrow('Unsafe kiosk media path'),
   );

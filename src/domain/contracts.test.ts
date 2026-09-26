@@ -11,6 +11,7 @@ import {
   cartItemSchema,
   categorySchema,
   orderSchema,
+  ownedImagePathSchema,
   paymentSettingsSchema,
   productSchema,
 } from './contracts';
@@ -28,6 +29,26 @@ const validProduct = createProduct();
 const validCartItem = createCartItem();
 
 describe('catalog contracts', () => {
+  it.each([
+    '../secret.png',
+    'images/../../secret.png',
+    'other/image.png',
+    'images\\secret.png',
+    'images//secret.png',
+    'images/file.txt',
+    'images/C:/secret.png',
+    'images/file.png?query=1',
+    'https://example.com/image.png',
+  ])('rejects unsafe owned image path %s at save boundaries', (imagePath) => {
+    expect(() => ownedImagePathSchema.parse(imagePath)).toThrow();
+    expect(() => productSchema.parse({ ...validProduct, thumbnailImage: imagePath })).toThrow();
+  });
+
+  it('accepts shipped internal SVG paths but not empty required product paths', () => {
+    expect(ownedImagePathSchema.parse('images/horizon-album.svg')).toBe('images/horizon-album.svg');
+    expect(() => productSchema.parse({ ...validProduct, thumbnailImage: '' })).toThrow();
+  });
+
   it('accepts valid categories and rejects unknown fields', () => {
     expect(categorySchema.parse(validCategory)).toEqual(validCategory);
     expect(() => categorySchema.parse({ ...validCategory, slug: 'albums' })).toThrow();
@@ -100,6 +121,10 @@ describe('settings contracts', () => {
       }),
     ).toThrow();
     expect(() => appSettingsSchema.parse({ ...validAppSettings, extra: true })).toThrow();
+    expect(() =>
+      appSettingsSchema.parse({ ...validAppSettings, welcomeBackgroundImage: '../outside.png' }),
+    ).toThrow();
+    expect(appSettingsSchema.parse({ ...validAppSettings, welcomeBackgroundImage: '' })).toBeTruthy();
   });
 
   it.each([0, 6, 1.5])('rejects processingSeconds=%s', (processingSeconds) => {
@@ -112,6 +137,10 @@ describe('settings contracts', () => {
     expect(() =>
       paymentSettingsSchema.parse({ ...validPaymentSettings, simulationResult: 'random' }),
     ).toThrow();
+    expect(() =>
+      paymentSettingsSchema.parse({ ...validPaymentSettings, qrImage: 'images/../outside.png' }),
+    ).toThrow();
+    expect(paymentSettingsSchema.parse({ ...validPaymentSettings, qrImage: '' })).toBeTruthy();
   });
 
   it('accepts complete bank and QR details in bankQr mode', () => {

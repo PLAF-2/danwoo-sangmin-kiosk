@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { createAtomicJsonStore } from '../storage/atomicJsonStore';
 import { IPC_CHANNELS, type IpcMainLike } from './channels';
+import type { IpcSecurity } from './ipcSecurity';
 
 const credentialSchema = z
   .object({
@@ -79,18 +80,34 @@ export async function initializeAdminPassword({
 export function registerAdminIpc({
   ipcMain,
   credentialFile,
+  security,
 }: {
   ipcMain: IpcMainLike;
   credentialFile: string;
+  security: IpcSecurity;
 }): void {
   const store = createAtomicJsonStore({ filePath: credentialFile, schema: credentialSchema });
 
-  ipcMain.handle(IPC_CHANNELS.adminAuthenticate, async (_event, ...args) => {
-    const [password] = z.tuple([passwordSchema]).parse(args);
-    return authenticate(credentialFile, password);
+  ipcMain.handle(IPC_CHANNELS.adminAuthenticate, async (event, ...args) => {
+    security.assertAuthenticationAllowed(event);
+    try {
+      const [password] = z.tuple([passwordSchema]).parse(args);
+      const authenticated = await authenticate(credentialFile, password);
+      if (authenticated) {
+        security.recordAuthenticationSuccess(event);
+        security.createAdminSession(event);
+      } else {
+        security.recordAuthenticationFailure(event);
+      }
+      return authenticated;
+    } catch (error) {
+      security.recordAuthenticationFailure(event);
+      throw error;
+    }
   });
 
-  ipcMain.handle(IPC_CHANNELS.adminChangePassword, async (_event, ...args) => {
+  ipcMain.handle(IPC_CHANNELS.adminChangePassword, async (event, ...args) => {
+    security.authorizeAdmin(event);
     const [currentPassword, nextPassword] = z
       .tuple([passwordSchema, nextPasswordSchema])
       .parse(args);
@@ -98,5 +115,6 @@ export function registerAdminIpc({
       throw new Error('Current password is incorrect');
     }
     await store.write(await createCredential(nextPassword));
+    security.invalidateAllAdminSessions();
   });
 }

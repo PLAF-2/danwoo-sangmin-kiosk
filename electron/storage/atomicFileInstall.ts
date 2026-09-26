@@ -72,3 +72,29 @@ export async function copyFileIfAbsentAtomic({
     },
   });
 }
+
+export async function installBufferIfAbsentAtomic({
+  content,
+  targetPath,
+  dependencies: dependencyOverrides,
+}: {
+  content: Uint8Array;
+  targetPath: string;
+  dependencies?: Partial<AtomicFileInstallDependencies>;
+}): Promise<boolean> {
+  const dependencies = { ...defaultDependencies, ...dependencyOverrides };
+  await dependencies.mkdir(dirname(targetPath), { recursive: true });
+  return publishStagedFileIfAbsent({
+    targetPath,
+    dependencies,
+    stage: async (temporaryPath) => {
+      const handle = await dependencies.open(temporaryPath, 'wx');
+      try {
+        await handle.writeFile(content);
+        await handle.sync();
+      } finally {
+        await closeBestEffort(handle);
+      }
+    },
+  });
+}

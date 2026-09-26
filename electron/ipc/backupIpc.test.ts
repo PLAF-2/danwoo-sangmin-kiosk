@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -13,7 +13,7 @@ import { createAtomicJsonStore } from '../storage/atomicJsonStore';
 import type { UserDataPaths } from '../storage/paths';
 import { registerBackupIpc } from './backupIpc';
 import { catalogDataSchema } from './schemas';
-import { createTestIpcMain } from './testHelpers';
+import { createTestIpcEvent, createTestIpcMain, createTestIpcSecurity } from './testHelpers';
 
 const directories: string[] = [];
 
@@ -51,21 +51,30 @@ async function setupPaths(): Promise<UserDataPaths> {
   return paths;
 }
 
+function registerAuthorizedBackup(
+  ipcMain: ReturnType<typeof createTestIpcMain>,
+  paths: UserDataPaths,
+  dialog: Parameters<typeof registerBackupIpc>[0]['dialog'],
+  fileOperations?: Parameters<typeof registerBackupIpc>[0]['fileOperations'],
+) {
+  const security = createTestIpcSecurity();
+  const event = createTestIpcEvent();
+  security.createAdminSession(event);
+  registerBackupIpc({ ipcMain, paths, dialog, security, ...(fileOperations ? { fileOperations } : {}) });
+  return event;
+}
+
 describe('backup IPC', () => {
   it('exports validated JSON data and owned images', async () => {
     const paths = await setupPaths();
     const backupFile = join(paths.userData, 'export.highest-backup.json');
     const ipcMain = createTestIpcMain();
-    registerBackupIpc({
-      ipcMain,
-      paths,
-      dialog: {
+    const event = registerAuthorizedBackup(ipcMain, paths, {
         showSaveDialog: vi.fn().mockResolvedValue({ canceled: false, filePath: backupFile }),
         showOpenDialog: vi.fn(),
-      },
     });
 
-    await expect(ipcMain.invoke('admin:export-backup')).resolves.toBe(backupFile);
+    await expect(ipcMain.invokeFrom(event, 'admin:export-backup')).resolves.toBe(backupFile);
     const backup = JSON.parse(await readFile(backupFile, 'utf8')) as {
       version: number;
       catalog: unknown;
@@ -89,7 +98,7 @@ describe('backup IPC', () => {
       payment: createPaymentSettings(),
     });
     expect(backup.images).toEqual([
-      { path: 'owned.png', contentBase64: Buffer.from('owned-image').toString('base64') },
+      { path: 'images/owned.png', contentBase64: Buffer.from('owned-image').toString('base64') },
     ]);
   });
 
@@ -110,18 +119,14 @@ describe('backup IPC', () => {
     const beforeSettings = await readFile(paths.settingsFile, 'utf8');
     const beforeImage = await readFile(join(paths.imagesDirectory, 'owned.png'));
     const ipcMain = createTestIpcMain();
-    registerBackupIpc({
-      ipcMain,
-      paths,
-      dialog: {
+    const event = registerAuthorizedBackup(ipcMain, paths, {
         showSaveDialog: vi.fn(),
         showOpenDialog: vi
           .fn()
           .mockResolvedValue({ canceled: false, filePaths: [invalidBackup] }),
-      },
     });
 
-    await expect(ipcMain.invoke('admin:import-backup')).rejects.toThrow();
+    await expect(ipcMain.invokeFrom(event, 'admin:import-backup')).rejects.toThrow();
     await expect(readFile(paths.catalogFile, 'utf8')).resolves.toBe(beforeCatalog);
     await expect(readFile(paths.settingsFile, 'utf8')).resolves.toBe(beforeSettings);
     await expect(readFile(join(paths.imagesDirectory, 'owned.png'))).resolves.toEqual(beforeImage);
@@ -146,23 +151,19 @@ describe('backup IPC', () => {
         payment: createPaymentSettings(),
         images: [
           {
-            path: 'products/replacement.png',
+            path: 'images/products/replacement.png',
             contentBase64: Buffer.from('replacement-image').toString('base64'),
           },
         ],
       }),
     );
     const ipcMain = createTestIpcMain();
-    registerBackupIpc({
-      ipcMain,
-      paths,
-      dialog: {
+    const event = registerAuthorizedBackup(ipcMain, paths, {
         showSaveDialog: vi.fn(),
         showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: [importFile] }),
-      },
     });
 
-    await expect(ipcMain.invoke('admin:import-backup')).resolves.toBeUndefined();
+    await expect(ipcMain.invokeFrom(event, 'admin:import-backup')).resolves.toBeUndefined();
     await expect(
       createAtomicJsonStore({ filePath: paths.catalogFile, schema: catalogDataSchema }).read(),
     ).resolves.toEqual(catalog);
@@ -177,17 +178,92 @@ describe('backup IPC', () => {
   it('returns without mutation when either dialog is cancelled and rejects extra arguments', async () => {
     const paths = await setupPaths();
     const ipcMain = createTestIpcMain();
-    registerBackupIpc({
-      ipcMain,
-      paths,
-      dialog: {
+    const event = registerAuthorizedBackup(ipcMain, paths, {
         showSaveDialog: vi.fn().mockResolvedValue({ canceled: true }),
         showOpenDialog: vi.fn().mockResolvedValue({ canceled: true, filePaths: [] }),
-      },
     });
 
-    await expect(ipcMain.invoke('admin:export-backup')).resolves.toBeNull();
-    await expect(ipcMain.invoke('admin:import-backup')).resolves.toBeUndefined();
-    await expect(ipcMain.invoke('admin:import-backup', 'unexpected')).rejects.toThrow();
+    await expect(ipcMain.invokeFrom(event, 'admin:export-backup')).resolves.toBeNull();
+    await expect(ipcMain.invokeFrom(event, 'admin:import-backup')).resolves.toBeUndefined();
+    await expect(ipcMain.invokeFrom(event, 'admin:import-backup', 'unexpected')).rejects.toThrow();
+  });
+
+  it('rolls back every target and cleans artifacts when a mid-commit rename fails', async () => {
+    const paths = await setupPaths();
+    const importFile = join(paths.userData, 'rollback.json');
+    const restoredCatalog = createCatalogData({
+      products: [
+        {
+          ...createCatalogData().products[0]!,
+          thumbnailImage: 'images/new.png',
+          detailImages: ['images/new.png'],
+        },
+      ],
+    });
+    await writeFile(
+      importFile,
+      JSON.stringify({
+        version: 1,
+        catalog: restoredCatalog,
+        settings: createAppSettings({ welcomeMessage: 'new' }),
+        payment: createPaymentSettings(),
+        images: [{ path: 'images/new.png', contentBase64: Buffer.from('new-image').toString('base64') }],
+      }),
+    );
+    const beforeCatalog = await readFile(paths.catalogFile, 'utf8');
+    const beforeSettings = await readFile(paths.settingsFile, 'utf8');
+    const beforePayment = await readFile(paths.paymentFile, 'utf8');
+    const beforeImage = await readFile(join(paths.imagesDirectory, 'owned.png'));
+    let renameCalls = 0;
+    const ipcMain = createTestIpcMain();
+    const event = registerAuthorizedBackup(
+      ipcMain,
+      paths,
+      {
+        showSaveDialog: vi.fn(),
+        showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: [importFile] }),
+      },
+      {
+        rename: async (from, to) => {
+          renameCalls += 1;
+          if (renameCalls === 4) throw new Error('injected rename failure');
+          await rename(from, to);
+        },
+      },
+    );
+
+    await expect(ipcMain.invokeFrom(event, 'admin:import-backup')).rejects.toThrow(
+      'injected rename failure',
+    );
+    await expect(readFile(paths.catalogFile, 'utf8')).resolves.toBe(beforeCatalog);
+    await expect(readFile(paths.settingsFile, 'utf8')).resolves.toBe(beforeSettings);
+    await expect(readFile(paths.paymentFile, 'utf8')).resolves.toBe(beforePayment);
+    await expect(readFile(join(paths.imagesDirectory, 'owned.png'))).resolves.toEqual(beforeImage);
+    await expect(readFile(join(paths.imagesDirectory, 'new.png'))).rejects.toMatchObject({ code: 'ENOENT' });
+    const siblings = await readdir(join(paths.userData, '..'));
+    expect(siblings.filter((name) => name.startsWith('.highest-restore-'))).toEqual([]);
+  });
+
+  it('rejects a selected backup link before reading or mutating user data', async () => {
+    const paths = await setupPaths();
+    const importFile = join(paths.userData, 'linked.json');
+    const beforeCatalog = await readFile(paths.catalogFile, 'utf8');
+    const ipcMain = createTestIpcMain();
+    const event = registerAuthorizedBackup(
+      ipcMain,
+      paths,
+      {
+        showSaveDialog: vi.fn(),
+        showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: [importFile] }),
+      },
+      {
+        lstat: vi.fn().mockResolvedValue({ isFile: () => true, isSymbolicLink: () => true }),
+      },
+    );
+
+    await expect(ipcMain.invokeFrom(event, 'admin:import-backup')).rejects.toThrow(
+      'Backup must be a regular file',
+    );
+    await expect(readFile(paths.catalogFile, 'utf8')).resolves.toBe(beforeCatalog);
   });
 });

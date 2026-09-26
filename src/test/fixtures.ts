@@ -47,8 +47,8 @@ export const createCartItem = (overrides: Partial<CartItem> = {}): CartItem => (
 export const createOrderInput = (
   overrides: Partial<CreateOrderInput> = {},
 ): CreateOrderInput => ({
+  requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   items: [createCartItem()],
-  paymentMode: 'instant',
   ...overrides,
 });
 
