@@ -6,6 +6,7 @@ const money = nonNegativeInteger;
 const timestamp = z.iso.datetime({ offset: true });
 
 const ownedImageExtensions = /\.(?:gif|jpe?g|png|svg|webp)$/iu;
+const windowsDeviceName = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9]|conin\$|conout\$|clock\$)(?:\.|$)/iu;
 export const ownedImagePathSchema = z.string().refine((value) => {
   if (!value.startsWith('images/') || value.includes('\\') || value.includes('\0')) return false;
   const segments = value.split('/');
@@ -16,6 +17,7 @@ export const ownedImagePathSchema = z.string().refine((value) => {
         segment.length > 0 &&
         segment !== '.' &&
         segment !== '..' &&
+        !windowsDeviceName.test(segment) &&
         ![...segment].some((character) => character.charCodeAt(0) <= 0x1f) &&
         !/[<>:"|?*]/u.test(segment) &&
         !/[. ]$/u.test(segment),

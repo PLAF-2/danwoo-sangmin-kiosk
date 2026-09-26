@@ -27,6 +27,7 @@ import {
   type ElectronPathProvider,
   type UserDataPaths,
 } from './paths';
+import { recoverPendingRestores } from './restoreTransaction';
 
 const catalogDataSchema = z
   .object({
@@ -377,6 +378,7 @@ export async function initializeUserData({
   dependencies,
 }: InitializeUserDataOptions): Promise<UserDataPaths> {
   const paths = createUserDataPaths(app);
+  await recoverPendingRestores(paths);
   const preflight = await preflightDefaults(defaultsDirectory, paths);
 
   await mkdir(paths.imagesDirectory, { recursive: true });

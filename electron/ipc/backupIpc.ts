@@ -16,18 +16,32 @@ import { z } from 'zod';
 import { appSettingsSchema, ownedImagePathSchema, paymentSettingsSchema } from '../../src/domain';
 import { createUniqueTemporaryPath, syncDirectoryBestEffort } from '../storage/atomicFileOperations';
 import { createAtomicJsonStore } from '../storage/atomicJsonStore';
+import {
+  MAX_IMAGE_BYTES,
+  readBoundedRegularFile,
+  validateImageContent,
+} from '../storage/imageValidation';
+import {
+  commitRestoreTransaction,
+  prepareRestoreTransaction,
+} from '../storage/restoreTransaction';
 import type { UserDataPaths } from '../storage/paths';
 import { IPC_CHANNELS, type IpcMainLike } from './channels';
 import type { IpcSecurity } from './ipcSecurity';
 import { catalogDataSchema } from './schemas';
 
 const allowedImageExtensions = new Set(['.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp']);
-const base64Schema = z.string().refine((value) => {
-  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value)) {
-    return false;
-  }
-  return Buffer.from(value, 'base64').toString('base64') === value;
-}, 'invalid base64');
+const maxBackupImageBytes = 50 * 1024 * 1024;
+const maxBackupFileBytes = 80 * 1024 * 1024;
+const maxBase64Length = 4 * Math.ceil(MAX_IMAGE_BYTES / 3);
+const base64Schema = z
+  .string()
+  .max(maxBase64Length)
+  .regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u, 'invalid base64');
+
+function decodedBase64Length(value: string): number {
+  return (value.length / 4) * 3 - (value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0);
+}
 
 const backupImageSchema = z
   .object({ path: ownedImagePathSchema, contentBase64: base64Schema })
@@ -44,11 +58,18 @@ const backupSchema = z
   .strict()
   .superRefine((backup, context) => {
     const imagePaths = new Set<string>();
+    let totalImageBytes = 0;
     for (const [index, image] of backup.images.entries()) {
-      if (imagePaths.has(image.path)) {
+      const pathKey = image.path.toLocaleLowerCase('en-US');
+      if (imagePaths.has(pathKey)) {
         context.addIssue({ code: 'custom', path: ['images', index, 'path'], message: 'duplicate path' });
       }
-      imagePaths.add(image.path);
+      imagePaths.add(pathKey);
+      totalImageBytes += decodedBase64Length(image.contentBase64);
+      if (totalImageBytes > maxBackupImageBytes) {
+        context.addIssue({ code: 'custom', path: ['images'], message: 'backup image total is too large' });
+        break;
+      }
     }
     const references = [
       backup.settings.welcomeBackgroundImage,
@@ -56,7 +77,7 @@ const backupSchema = z
       ...backup.catalog.products.flatMap((product) => [product.thumbnailImage, ...product.detailImages]),
     ].filter(Boolean);
     for (const reference of references) {
-      if (!imagePaths.has(reference)) {
+      if (!imagePaths.has(reference.toLocaleLowerCase('en-US'))) {
         context.addIssue({ code: 'custom', path: ['images'], message: `missing image: ${reference}` });
       }
     }
@@ -135,65 +156,6 @@ async function writeBufferAtomic(path: string, content: Buffer): Promise<void> {
   }
 }
 
-async function pathExistsAsOwnedType(
-  path: string,
-  expected: 'file' | 'directory',
-  fileOperations: BackupFileOperations,
-): Promise<boolean> {
-  try {
-    const stats = await fileOperations.lstat(path);
-    if (stats.isSymbolicLink()) throw new Error(`Refusing to replace linked backup target: ${path}`);
-    if (expected === 'file' ? !stats.isFile() : !stats.isDirectory()) {
-      throw new Error(`Unexpected backup target type: ${path}`);
-    }
-    return true;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
-    throw error;
-  }
-}
-
-async function commitRestore({
-  paths,
-  stage,
-  rollback,
-  fileOperations,
-}: {
-  paths: UserDataPaths;
-  stage: string;
-  rollback: string;
-  fileOperations: BackupFileOperations;
-}): Promise<void> {
-  const targets = [
-    { live: paths.catalogFile, staged: join(stage, 'catalog.json'), saved: join(rollback, 'catalog.json'), type: 'file' as const },
-    { live: paths.settingsFile, staged: join(stage, 'settings.json'), saved: join(rollback, 'settings.json'), type: 'file' as const },
-    { live: paths.paymentFile, staged: join(stage, 'payment.json'), saved: join(rollback, 'payment.json'), type: 'file' as const },
-    { live: paths.imagesDirectory, staged: join(stage, 'images'), saved: join(rollback, 'images'), type: 'directory' as const },
-  ];
-  const changes: Array<{ live: string; saved: string; originalMoved: boolean; installed: boolean }> = [];
-  try {
-    for (const target of targets) {
-      const change = { live: target.live, saved: target.saved, originalMoved: false, installed: false };
-      changes.push(change);
-      await mkdir(dirname(target.saved), { recursive: true });
-      if (await pathExistsAsOwnedType(target.live, target.type, fileOperations)) {
-        await fileOperations.rename(target.live, target.saved);
-        change.originalMoved = true;
-      }
-      await fileOperations.rename(target.staged, target.live);
-      change.installed = true;
-    }
-  } catch (error) {
-    for (const change of changes.reverse()) {
-      if (change.installed) {
-        await fileOperations.rm(change.live, { recursive: true, force: true });
-      }
-      if (change.originalMoved) await fileOperations.rename(change.saved, change.live);
-    }
-    throw error;
-  }
-}
-
 export function registerBackupIpc({
   ipcMain,
   paths,
@@ -245,22 +207,39 @@ export function registerBackupIpc({
       throw new Error('Backup must be a regular file');
     }
 
-    const backup = backupSchema.parse(JSON.parse(await readFile(filePath, 'utf8')));
-    const transactionRoot = await fileOperations.mkdtemp(join(dirname(paths.userData), '.highest-restore-'));
+    const backup = backupSchema.parse(
+      JSON.parse((await readBoundedRegularFile(filePath, maxBackupFileBytes, 'Backup')).toString('utf8')),
+    );
+    const decodedImages = backup.images.map((image) => {
+      const content = Buffer.from(image.contentBase64, 'base64');
+      validateImageContent(content, image.path, { allowSvg: true });
+      return { path: image.path, content };
+    });
+    const transactionRoot = await fileOperations.mkdtemp(join(paths.userData, '.highest-restore-'));
     const stage = join(transactionRoot, 'stage');
-    const rollback = join(transactionRoot, 'rollback');
+    const restoreFileOperations = {
+      lstat: fileOperations.lstat,
+      rename: fileOperations.rename,
+      rm: fileOperations.rm,
+    };
+    let journaled = false;
     try {
       await createAtomicJsonStore({ filePath: join(stage, 'catalog.json'), schema: catalogDataSchema }).write(backup.catalog);
       await createAtomicJsonStore({ filePath: join(stage, 'settings.json'), schema: appSettingsSchema }).write(backup.settings);
       await createAtomicJsonStore({ filePath: join(stage, 'payment.json'), schema: paymentSettingsSchema }).write(backup.payment);
       await mkdir(join(stage, 'images'), { recursive: true });
-      for (const image of backup.images) {
+      for (const image of decodedImages) {
         const relativeImagePath = image.path.slice('images/'.length);
-        await writeBufferAtomic(join(stage, 'images', ...relativeImagePath.split('/')), Buffer.from(image.contentBase64, 'base64'));
+        await writeBufferAtomic(join(stage, 'images', ...relativeImagePath.split('/')), image.content);
       }
-      await commitRestore({ paths, stage, rollback, fileOperations });
-    } finally {
-      await fileOperations.rm(transactionRoot, { recursive: true, force: true });
+      await prepareRestoreTransaction({ paths, transactionRoot, fileOperations: restoreFileOperations });
+      journaled = true;
+      await commitRestoreTransaction({ paths, transactionRoot, fileOperations: restoreFileOperations });
+    } catch (error) {
+      if (!journaled) {
+        await fileOperations.rm(transactionRoot, { recursive: true, force: true });
+      }
+      throw error;
     }
   });
 }

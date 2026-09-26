@@ -1,8 +1,11 @@
 import {
+  cp,
+  copyFile,
   mkdir,
   mkdtemp,
   readFile,
   readdir,
+  rename,
   rm,
   symlink,
   writeFile,
@@ -12,6 +15,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { initializeUserData } from './initializeUserData';
+import { prepareRestoreTransaction } from './restoreTransaction';
 
 const temporaryDirectories: string[] = [];
 
@@ -236,5 +240,39 @@ describe('initializeUserData', () => {
     expect(await readFile(join(userData, 'images', 'horizon-album.svg'), 'utf8')).toContain(
       '<svg',
     );
+  });
+
+  it('recovers an interrupted backup restore before normal startup initialization', async () => {
+    const userData = await makeTemporaryDirectory('highest-user-data-');
+    const defaultsDirectory = await makeTemporaryDirectory('highest-defaults-');
+    await copyFixtureDefaults(defaultsDirectory);
+    const options = { app: { getPath: () => userData }, defaultsDirectory };
+    const paths = await initializeUserData(options);
+    const originalCatalog = await readFile(paths.catalogFile, 'utf8');
+    const transactionRoot = await mkdtemp(join(userData, '.highest-restore-'));
+    const stage = join(transactionRoot, 'stage');
+    const rollback = join(transactionRoot, 'rollback');
+    await mkdir(stage, { recursive: true });
+    await Promise.all([
+      copyFile(paths.catalogFile, join(stage, 'catalog.json')),
+      copyFile(paths.settingsFile, join(stage, 'settings.json')),
+      copyFile(paths.paymentFile, join(stage, 'payment.json')),
+      cp(paths.imagesDirectory, join(stage, 'images'), { recursive: true }),
+    ]);
+    const stagedCatalogPath = join(stage, 'catalog.json');
+    const stagedCatalog = JSON.parse(await readFile(stagedCatalogPath, 'utf8')) as {
+      products: Array<{ name: string }>;
+    };
+    stagedCatalog.products[0]!.name = 'interrupted replacement';
+    await writeFile(stagedCatalogPath, JSON.stringify(stagedCatalog));
+    await prepareRestoreTransaction({ paths, transactionRoot });
+    await mkdir(rollback, { recursive: true });
+    await rename(paths.catalogFile, join(rollback, 'catalog.json'));
+    await rename(stagedCatalogPath, paths.catalogFile);
+
+    await initializeUserData(options);
+
+    await expect(readFile(paths.catalogFile, 'utf8')).resolves.toBe(originalCatalog);
+    expect((await readdir(userData)).some((name) => name.startsWith('.highest-restore-'))).toBe(false);
   });
 });

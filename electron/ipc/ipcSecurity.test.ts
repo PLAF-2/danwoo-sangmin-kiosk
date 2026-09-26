@@ -17,6 +17,26 @@ describe('IPC security', () => {
     expect(() => security.authorizePublic({})).toThrow('Untrusted IPC sender');
   });
 
+  it('trusts hash and search navigation within the packaged renderer file only', () => {
+    const security = createIpcSecurity({
+      trustedRendererUrl: 'file:///C:/app/renderer/index.html',
+    });
+
+    expect(() =>
+      security.authorizePublic(
+        createTestIpcEvent({ url: 'file:///C:/app/renderer/index.html?mode=kiosk#/shop' }),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      security.authorizePublic(
+        createTestIpcEvent({ url: 'file:///C:/app/renderer/other.html#/shop' }),
+      ),
+    ).toThrow('Untrusted IPC sender');
+    expect(() =>
+      security.authorizePublic(createTestIpcEvent({ url: 'https://app.invalid/index.html' })),
+    ).toThrow('Untrusted IPC sender');
+  });
+
   it('binds sessions to senders, expires after five idle minutes, and refreshes on use', () => {
     let now = 0;
     const security = createIpcSecurity({

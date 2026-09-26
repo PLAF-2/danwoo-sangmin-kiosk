@@ -39,6 +39,9 @@ describe('catalog contracts', () => {
     'images/C:/secret.png',
     'images/file.png?query=1',
     'https://example.com/image.png',
+    'images/CON.png',
+    'images/products/aux.jpg',
+    'images/LPT1/detail.png',
   ])('rejects unsafe owned image path %s at save boundaries', (imagePath) => {
     expect(() => ownedImagePathSchema.parse(imagePath)).toThrow();
     expect(() => productSchema.parse({ ...validProduct, thumbnailImage: imagePath })).toThrow();

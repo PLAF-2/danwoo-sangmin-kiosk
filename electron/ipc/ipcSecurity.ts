@@ -1,3 +1,6 @@
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 export interface IpcSenderLike {
   id: number;
   mainFrame: IpcFrameLike;
@@ -49,6 +52,17 @@ function matchesTrustedRenderer(actualUrl: string, trustedRendererUrl: string): 
     if (trusted.protocol === 'http:' || trusted.protocol === 'https:') {
       return actual.origin === trusted.origin;
     }
+    if (trusted.protocol === 'file:' && actual.protocol === 'file:') {
+      const actualPath = resolve(fileURLToPath(actual));
+      const trustedPath = resolve(fileURLToPath(trusted));
+      return process.platform === 'win32'
+        ? actualPath.toLocaleLowerCase('en-US') === trustedPath.toLocaleLowerCase('en-US')
+        : actualPath === trustedPath;
+    }
+    actual.search = '';
+    actual.hash = '';
+    trusted.search = '';
+    trusted.hash = '';
     return actual.href === trusted.href;
   } catch {
     return false;
