@@ -1,0 +1,13 @@
+{
+  "welcomeBackgroundImage": "images/welcome-background.svg",
+  "welcomeImagePosition": {
+    "x": 50,
+    "y": 50
+  },
+  "welcomeImageScale": 1,
+  "welcomeLogoVisible": true,
+  "welcomeMessage": "새로운 수평선을 만나보세요.",
+  "idleTimeoutSeconds": 90,
+  "idleWarningSeconds": 15,
+  "completionResetSeconds": 20
+}
