@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 
 export interface IpcSenderLike {
   id: number;
@@ -16,10 +17,15 @@ export interface IpcEventLike {
   senderFrame: IpcFrameLike;
 }
 
+export interface AuthorizedAdminEvent extends IpcEventLike {
+  adminSessionId: string;
+}
+
 export interface IpcSecurity {
   authorizePublic(event: unknown): IpcEventLike;
-  authorizeAdmin(event: unknown): IpcEventLike;
+  authorizeAdmin(event: unknown): AuthorizedAdminEvent;
   createAdminSession(event: unknown): void;
+  invalidateAdminSession(event: unknown): void;
   invalidateAllAdminSessions(): void;
   assertAuthenticationAllowed(event: unknown): void;
   recordAuthenticationFailure(event: unknown): void;
@@ -80,7 +86,7 @@ export function createIpcSecurity({
   adminIdleTimeoutMs?: number;
   authenticationBackoffBaseMs?: number;
 }): IpcSecurity {
-  const sessions = new Map<number, number>();
+  const sessions = new Map<number, { id: string; lastUsedAt: number }>();
   const attempts = new Map<
     number,
     { failures: number; blockedUntil: number; activeUntil: number }
@@ -106,19 +112,23 @@ export function createIpcSecurity({
     authorizePublic,
     authorizeAdmin(event) {
       const parsed = authorizePublic(event);
-      const lastUsedAt = sessions.get(parsed.sender.id);
-      if (lastUsedAt === undefined) throw new Error('Admin authentication required');
+      const session = sessions.get(parsed.sender.id);
+      if (session === undefined) throw new Error('Admin authentication required');
       const currentTime = now();
-      if (currentTime - lastUsedAt >= adminIdleTimeoutMs) {
+      if (currentTime - session.lastUsedAt >= adminIdleTimeoutMs) {
         sessions.delete(parsed.sender.id);
         throw new Error('Admin session expired');
       }
-      sessions.set(parsed.sender.id, currentTime);
-      return parsed;
+      sessions.set(parsed.sender.id, { ...session, lastUsedAt: currentTime });
+      return { ...parsed, adminSessionId: session.id };
     },
     createAdminSession(event) {
       const parsed = authorizePublic(event);
-      sessions.set(parsed.sender.id, now());
+      sessions.set(parsed.sender.id, { id: randomUUID(), lastUsedAt: now() });
+    },
+    invalidateAdminSession(event) {
+      const parsed = authorizePublic(event);
+      sessions.delete(parsed.sender.id);
     },
     invalidateAllAdminSessions() {
       sessions.clear();

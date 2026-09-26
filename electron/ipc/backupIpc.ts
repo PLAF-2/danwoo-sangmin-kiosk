@@ -95,6 +95,15 @@ export interface BackupDialogLike {
     properties: ['openFile'];
     filters: Array<{ name: string; extensions: string[] }>;
   }): Promise<{ canceled: boolean; filePaths: string[] }>;
+  showMessageBox(options: {
+    type: 'warning';
+    buttons: string[];
+    defaultId: number;
+    cancelId: number;
+    title: string;
+    message: string;
+    detail: string;
+  }): Promise<{ response: number }>;
 }
 
 export interface BackupFileOperations {
@@ -253,6 +262,16 @@ export function registerBackupIpc({
         await validateImageContent(content, image.path, { allowSvg: true });
         decodedImages.push({ path: image.path, content });
       }
+      const confirmation = await dialog.showMessageBox({
+        type: 'warning',
+        buttons: ['가져오기', '취소'],
+        defaultId: 1,
+        cancelId: 1,
+        title: '백업 가져오기 확인',
+        message: `상품 ${backup.catalog.products.length}개, 카테고리 ${backup.catalog.categories.length}개, 이미지 ${backup.images.length}개를 가져옵니다.`,
+        detail: '현재 상품, 화면, 결제 설정과 이미지가 검증된 백업 내용으로 교체됩니다.',
+      });
+      if (confirmation.response !== 0) return;
       const transactionRoot = await fileOperations.mkdtemp(join(paths.userData, '.highest-restore-'));
       const stage = join(transactionRoot, 'stage');
       const restoreFileOperations = {

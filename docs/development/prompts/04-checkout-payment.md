@@ -32,7 +32,7 @@
    - `simulation`: `결제 시뮬레이션`, 설정에 따라 paid 또는 failed
 8. bankQr 모드에서는 어느 화면에도 `결제 완료`라고 쓰지 말고 `주문 접수`와 운영자 확인 안내를 사용한다.
 9. 최종 버튼을 처음 누른 즉시 잠그고 중복 주문 생성 요청을 막는다.
-10. 주문 번호는 main process에서 한 번만 생성·저장하고 `/processing`으로 이동한다.
+10. `/processing`의 대기 애니메이션과 simulation 결과 판단을 먼저 끝낸 뒤 `orders.create`를 호출한다. main process는 terminal 상태(`instant=paid`, `bankQr=received`, simulation 성공=`paid`, 실패=`failed`)의 주문 번호를 한 번만 생성·저장한다. 같은 `requestId` 재호출은 같은 주문을 반환하고, 실패 후 새 결제 시도에는 새 `requestId`를 사용한다.
 11. 처리 성공 시 `/complete/:orderNumber`, 실패 시 재시도 또는 `/shop` 복귀를 제공한다.
 
 먼저 실패하는 테스트를 작성하고 다음을 검증한다.

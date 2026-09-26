@@ -24,10 +24,10 @@ function defaultOrderNumber(now: Date): string {
   return `${date}-${randomUUID()}`;
 }
 
-function statusFor(paymentMode: Order['paymentMode']): OrderStatus {
-  if (paymentMode === 'bankQr') return 'received';
-  if (paymentMode === 'instant') return 'paid';
-  return 'processing';
+function statusFor(payment: z.infer<typeof paymentSettingsSchema>): OrderStatus {
+  if (payment.mode === 'bankQr') return 'received';
+  if (payment.mode === 'instant') return 'paid';
+  return payment.simulationResult === 'success' ? 'paid' : 'failed';
 }
 
 async function readIfPresent<T>(store: ReturnType<typeof createAtomicJsonStore<T>>): Promise<T | null> {
@@ -123,7 +123,7 @@ export function registerOrderIpc({
         discount: 0,
         total: subtotal,
         paymentMode: payment.mode,
-        status: statusFor(payment.mode),
+        status: statusFor(payment),
         createdAt: now().toISOString(),
       });
       const record = { requestId: input.requestId, fingerprint, order };

@@ -138,7 +138,7 @@ unset kiosk_password
 
 `admin-credentials.json`이 이미 있으면 환경 변수는 무시되어 기존 비밀번호가 유지됩니다. 자격 증명 파일이 없고 환경 변수도 없으면 앱은 시작되지만 관리자 인증은 비활성화되고 오류 로그가 남습니다. 이 경우 환경 변수를 제공해 앱을 다시 시작하면 자격 증명 파일을 생성할 수 있습니다.
 
-비밀번호 변경 IPC는 이미 `window.kiosk.admin.changePassword(currentPassword, nextPassword)`로 제공됩니다. 실제 변경 화면은 Admin 스레드가 `/admin/system`에 구현할 예정이며, 변경이 성공하면 모든 기존 관리자 세션이 무효화됩니다.
+비밀번호 변경 IPC는 이미 `window.kiosk.admin.changePassword(currentPassword, nextPassword)`로 제공됩니다. 실제 변경 화면은 Admin 스레드가 `/admin/system`에 구현할 예정이며, 변경이 성공하면 모든 기존 관리자 세션이 무효화됩니다. 관리자 화면을 닫을 때는 `window.kiosk.admin.logout()`을 호출합니다. 이 호출은 해당 renderer sender의 세션만 즉시 폐기합니다. 보호된 IPC 사용 시 갱신되는 5분 유휴 만료의 화면 연동(경고와 로그인 화면 전환)은 Admin 스레드가 담당합니다.
 
 ## 보안 경계
 
@@ -148,6 +148,13 @@ unset kiosk_password
 - 새 창 열기와 외부 navigation을 차단합니다.
 - 사용자 이미지에는 `kiosk-media://images/<상대 경로>` 전용 scheme을 사용합니다. scheme은 `userData/images` 내부의 허용된 이미지 확장자만 제공하고 절대 경로, 상위 경로 이동, symlink를 거부합니다.
 - 앱은 단일 인스턴스로 동작합니다.
+
+### Renderer IPC 계약
+
+- 정사각형 상품/QR 이미지는 `window.kiosk.media.selectImage('square')`로 선택합니다. 반환값은 요청 `kind`, 최대 512 KiB의 PNG data URL 미리보기, 원본 픽셀 크기, opaque `selectionId`만 포함하며 로컬 파일 경로는 포함하지 않습니다. 사용자가 정사각형 영역을 결정한 뒤 `window.kiosk.media.saveSquareCrop({ selectionId, x, y, width, height })`를 호출하면 main process가 범위와 관리자 세션을 다시 확인하고 PNG로 crop해 저장합니다. 선택은 한 번만 사용할 수 있고 5분 뒤 만료되며 프로세스 내 보관 개수도 최대 8개입니다.
+- 기존 `importSquareImage()`와 `importWelcomeImage()`는 호환성을 위해 유지됩니다. 전자는 이미 정사각형인 파일만 직접 저장하며, 후자는 welcome 배경을 직접 가져옵니다.
+- `window.kiosk.admin.logout()`은 호출 sender의 관리자 세션만 폐기합니다.
+- `window.kiosk.orders.create(input)`은 결제 화면의 대기 애니메이션과 simulation 판단이 끝난 뒤 한 번 호출합니다. 저장 상태는 항상 terminal입니다: `instant → paid`, `bankQr → received`, `simulation success → paid`, `simulation failure → failed`. `processingSeconds`와 `simulationResult`는 호출 전 표시/제어용 설정입니다. 같은 `requestId` 재호출은 디스크 재시작 이후에도 같은 주문을 반환하며, 실패 후 새 시도를 생성하려면 새 `requestId`를 사용해야 합니다.
 
 이 경계는 같은 OS 사용자 계정이 악의적으로 로컬 파일이나 디렉터리 junction을 동시에 바꾸는 공격까지 방어하는 시스템 권한 경계는 아닙니다. 운영 장비는 제한된 전용 OS 계정으로 실행하고 `userData` 접근 권한을 제한해야 합니다.
 
@@ -161,7 +168,7 @@ unset kiosk_password
 - `payment` (`payment.json`)
 - `images` (`images/`의 검증된 파일을 Base64로 포함)
 
-주문(`orders/` 및 `.requests/`), 관리자 자격 증명(`admin-credentials.json`), 임시 파일, 복원 저널은 제외됩니다. 즉 백업 복원은 판매 콘텐츠와 표시·결제 설정만 교체하며 주문 이력과 관리자 비밀번호를 이전하거나 되돌리지 않습니다. 가져오기는 schema, 경로, 이미지 형식·크기·개수를 먼저 검증하고 stage/rollback 저널을 이용해 네 대상(`catalog`, `settings`, `payment`, `images`)을 함께 교체합니다.
+주문(`orders/` 및 `.requests/`), 관리자 자격 증명(`admin-credentials.json`), 임시 파일, 복원 저널은 제외됩니다. 즉 백업 복원은 판매 콘텐츠와 표시·결제 설정만 교체하며 주문 이력과 관리자 비밀번호를 이전하거나 되돌리지 않습니다. 가져오기는 schema, 경로, 이미지 형식·크기·개수를 먼저 모두 검증하고 가져올 상품·카테고리·이미지 수와 교체 범위를 확인 dialog로 표시합니다. 관리자가 승인한 뒤에만 stage/rollback 저널을 이용해 네 대상(`catalog`, `settings`, `payment`, `images`)을 함께 교체합니다.
 
 ## 현재 라우트와 후속 소유권
 

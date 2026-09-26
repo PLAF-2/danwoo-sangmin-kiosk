@@ -132,8 +132,8 @@ describe('order IPC', () => {
   it.each([
     ['bankQr', 'received'],
     ['instant', 'paid'],
-    ['simulation', 'processing'],
-  ] as const)('derives %s payment mode and status from active settings', async (mode, status) => {
+    ['simulation', 'paid'],
+  ] as const)('derives %s payment mode and terminal status from active settings', async (mode, status) => {
     const ipcMain = await setup(
       createCatalogData(),
       createPaymentSettings(
@@ -152,6 +152,35 @@ describe('order IPC', () => {
       paymentMode: mode,
       status,
     });
+  });
+
+  it('persists simulation failure as failed and keeps same-id retries idempotent', async () => {
+    const ipcMain = await setup(
+      createCatalogData(),
+      createPaymentSettings({ mode: 'simulation', simulationResult: 'failure' }),
+    );
+    const input = createOrderInput();
+
+    const first = await ipcMain.invoke('orders:create', input);
+    const duplicate = await ipcMain.invoke('orders:create', input);
+
+    expect(first).toMatchObject({ orderNumber: 'ORDER-1', status: 'failed' });
+    expect(duplicate).toEqual(first);
+  });
+
+  it('allows a failed simulation retry only with a new request id', async () => {
+    const ipcMain = await setup(
+      createCatalogData(),
+      createPaymentSettings({ mode: 'simulation', simulationResult: 'failure' }),
+    );
+
+    const first = await ipcMain.invoke('orders:create', createOrderInput());
+    const retry = await ipcMain.invoke('orders:create', createOrderInput({
+      requestId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    }));
+
+    expect(first).toMatchObject({ orderNumber: 'ORDER-1', status: 'failed' });
+    expect(retry).toMatchObject({ orderNumber: 'ORDER-2', status: 'failed' });
   });
 
   it('returns the same order after IPC registration restarts', async () => {

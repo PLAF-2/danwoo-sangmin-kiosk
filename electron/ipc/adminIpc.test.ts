@@ -81,4 +81,28 @@ describe('admin password IPC', () => {
     );
     await expect(ipcMain.invokeFrom(event, 'admin:change-password', 'initial-secret', 'short')).rejects.toThrow();
   });
+
+  it('logs out only the requesting sender and immediately rejects protected calls', async () => {
+    const path = await credentialPath();
+    await initializeAdminPassword({
+      credentialFile: path,
+      initialPassword: 'initial-secret',
+      log: { error: vi.fn() },
+    });
+    const ipcMain = createTestIpcMain();
+    const security = createTestIpcSecurity();
+    const first = createTestIpcEvent({ id: 1 });
+    const second = createTestIpcEvent({ id: 2 });
+    security.createAdminSession(first);
+    security.createAdminSession(second);
+    registerAdminIpc({ ipcMain, credentialFile: path, security });
+
+    await expect(ipcMain.invokeFrom(first, 'admin:logout')).resolves.toBeUndefined();
+    await expect(
+      ipcMain.invokeFrom(first, 'admin:change-password', 'initial-secret', 'another-password'),
+    ).rejects.toThrow('Admin authentication required');
+    await expect(
+      ipcMain.invokeFrom(second, 'admin:change-password', 'initial-secret', 'another-password'),
+    ).resolves.toBeUndefined();
+  });
 });

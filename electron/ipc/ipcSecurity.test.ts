@@ -70,6 +70,19 @@ describe('IPC security', () => {
     expect(() => security.authorizeAdmin(second)).toThrow('Admin authentication required');
   });
 
+  it('invalidates only the requesting sender session', () => {
+    const security = createIpcSecurity({ trustedRendererUrl: 'http://localhost:5173/' });
+    const first = createTestIpcEvent({ id: 1 });
+    const second = createTestIpcEvent({ id: 2 });
+    security.createAdminSession(first);
+    security.createAdminSession(second);
+
+    security.invalidateAdminSession(first);
+
+    expect(() => security.authorizeAdmin(first)).toThrow('Admin authentication required');
+    expect(() => security.authorizeAdmin(second)).not.toThrow();
+  });
+
   it('expires a session exactly at the idle timeout boundary', () => {
     let now = 0;
     const security = createIpcSecurity({

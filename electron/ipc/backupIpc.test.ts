@@ -65,7 +65,8 @@ async function setupPaths(): Promise<UserDataPaths> {
 function registerAuthorizedBackup(
   ipcMain: ReturnType<typeof createTestIpcMain>,
   paths: UserDataPaths,
-  dialog: Parameters<typeof registerBackupIpc>[0]['dialog'],
+  dialog: Omit<Parameters<typeof registerBackupIpc>[0]['dialog'], 'showMessageBox'> &
+    Partial<Pick<Parameters<typeof registerBackupIpc>[0]['dialog'], 'showMessageBox'>>,
   fileOperations?: Parameters<typeof registerBackupIpc>[0]['fileOperations'],
   exportLimits?: Parameters<typeof registerBackupIpc>[0]['exportLimits'],
 ) {
@@ -75,7 +76,10 @@ function registerAuthorizedBackup(
   registerBackupIpc({
     ipcMain,
     paths,
-    dialog,
+    dialog: {
+      ...dialog,
+      showMessageBox: dialog.showMessageBox ?? vi.fn().mockResolvedValue({ response: 0 }),
+    },
     security,
     ...(fileOperations ? { fileOperations } : {}),
     ...(exportLimits ? { exportLimits } : {}),
@@ -84,6 +88,48 @@ function registerAuthorizedBackup(
 }
 
 describe('backup IPC', () => {
+  it('asks for confirmation after validation and cancellation leaves JSON and images untouched', async () => {
+    const paths = await setupPaths();
+    const importFile = join(paths.userData, 'cancelled-valid.json');
+    const restoredCatalog = createCatalogData({
+      products: [{
+        ...createCatalogData().products[0]!,
+        thumbnailImage: 'images/replacement.png',
+        detailImages: ['images/replacement.png'],
+      }],
+    });
+    await writeFile(importFile, JSON.stringify({
+      version: 1,
+      catalog: restoredCatalog,
+      settings: createAppSettings({ welcomeMessage: 'must not be restored' }),
+      payment: createPaymentSettings({ pickupMessage: 'must not be restored' }),
+      images: [{ path: 'images/replacement.png', contentBase64: png().toString('base64') }],
+    }));
+    const beforeCatalog = await readFile(paths.catalogFile, 'utf8');
+    const beforeSettings = await readFile(paths.settingsFile, 'utf8');
+    const beforePayment = await readFile(paths.paymentFile, 'utf8');
+    const beforeImages = await readdir(paths.imagesDirectory);
+    const showMessageBox = vi.fn().mockResolvedValue({ response: 1 });
+    const ipcMain = createTestIpcMain();
+    const event = registerAuthorizedBackup(ipcMain, paths, {
+      showSaveDialog: vi.fn(),
+      showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: [importFile] }),
+      showMessageBox,
+    });
+
+    await expect(ipcMain.invokeFrom(event, 'admin:import-backup')).resolves.toBeUndefined();
+    expect(showMessageBox).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'warning',
+      message: expect.stringContaining('1'),
+      buttons: expect.any(Array),
+    }));
+    await expect(readFile(paths.catalogFile, 'utf8')).resolves.toBe(beforeCatalog);
+    await expect(readFile(paths.settingsFile, 'utf8')).resolves.toBe(beforeSettings);
+    await expect(readFile(paths.paymentFile, 'utf8')).resolves.toBe(beforePayment);
+    await expect(readdir(paths.imagesDirectory)).resolves.toEqual(beforeImages);
+    expect((await readdir(paths.userData)).some((name) => name.startsWith('.highest-restore-'))).toBe(false);
+  });
+
   it('exports validated JSON data and owned images', async () => {
     const paths = await setupPaths();
     const backupFile = join(paths.userData, 'export.highest-backup.json');
@@ -379,6 +425,7 @@ describe('backup IPC', () => {
       dialog: {
         showSaveDialog: vi.fn(),
         showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: [importFile] }),
+        showMessageBox: vi.fn().mockResolvedValue({ response: 0 }),
       },
       fileOperations: {
         rename: async (from, to) => {

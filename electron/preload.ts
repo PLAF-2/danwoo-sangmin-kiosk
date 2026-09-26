@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { KioskApi } from '../src/services/kioskApi';
+import type { KioskApi, SquareCropInput } from '../src/services/kioskApi';
 import type {
   AppSettings,
   CatalogData,
@@ -21,6 +21,8 @@ const kiosk: KioskApi = Object.freeze({
     savePayment: (input: PaymentSettings) => ipcRenderer.invoke(IPC_CHANNELS.paymentSave, input),
   }),
   media: Object.freeze({
+    selectImage: (kind: 'square' | 'welcome') => ipcRenderer.invoke(IPC_CHANNELS.mediaSelectImage, kind),
+    saveSquareCrop: (input: SquareCropInput) => ipcRenderer.invoke(IPC_CHANNELS.mediaSaveSquareCrop, input),
     importSquareImage: () => ipcRenderer.invoke(IPC_CHANNELS.mediaImportSquare),
     importWelcomeImage: () => ipcRenderer.invoke(IPC_CHANNELS.mediaImportWelcome),
   }),
@@ -30,6 +32,7 @@ const kiosk: KioskApi = Object.freeze({
   }),
   admin: Object.freeze({
     authenticate: (password: string) => ipcRenderer.invoke(IPC_CHANNELS.adminAuthenticate, password),
+    logout: () => ipcRenderer.invoke(IPC_CHANNELS.adminLogout),
     changePassword: (currentPassword: string, nextPassword: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.adminChangePassword, currentPassword, nextPassword),
     exportBackup: () => ipcRenderer.invoke(IPC_CHANNELS.backupExport),

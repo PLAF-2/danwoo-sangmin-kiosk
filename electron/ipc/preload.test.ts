@@ -30,10 +30,16 @@ describe('preload API', () => {
       'readPayment',
       'savePayment',
     ]);
-    expect(Object.keys(api.media ?? {})).toEqual(['importSquareImage', 'importWelcomeImage']);
+    expect(Object.keys(api.media ?? {})).toEqual([
+      'selectImage',
+      'saveSquareCrop',
+      'importSquareImage',
+      'importWelcomeImage',
+    ]);
     expect(Object.keys(api.orders ?? {})).toEqual(['create', 'read']);
     expect(Object.keys(api.admin ?? {})).toEqual([
       'authenticate',
+      'logout',
       'changePassword',
       'exportBackup',
       'importBackup',
@@ -50,10 +56,16 @@ describe('preload API', () => {
         readPayment(): Promise<unknown>;
         savePayment(value: unknown): Promise<unknown>;
       };
-      media: { importSquareImage(): Promise<unknown>; importWelcomeImage(): Promise<unknown> };
+      media: {
+        selectImage(kind: string): Promise<unknown>;
+        saveSquareCrop(value: unknown): Promise<unknown>;
+        importSquareImage(): Promise<unknown>;
+        importWelcomeImage(): Promise<unknown>;
+      };
       orders: { create(value: unknown): Promise<unknown>; read(value: string): Promise<unknown> };
       admin: {
         authenticate(value: string): Promise<unknown>;
+        logout(): Promise<unknown>;
         changePassword(current: string, next: string): Promise<unknown>;
         exportBackup(): Promise<unknown>;
         importBackup(): Promise<unknown>;
@@ -66,11 +78,14 @@ describe('preload API', () => {
     await api.settings.save({});
     await api.settings.readPayment();
     await api.settings.savePayment({});
+    await api.media.selectImage('square');
+    await api.media.saveSquareCrop({ selectionId: 'id', x: 0, y: 0, width: 1, height: 1 });
     await api.media.importSquareImage();
     await api.media.importWelcomeImage();
     await api.orders.create({});
     await api.orders.read('order');
     await api.admin.authenticate('password');
+    await api.admin.logout();
     await api.admin.changePassword('current', 'next-password');
     await api.admin.exportBackup();
     await api.admin.importBackup();
@@ -82,11 +97,14 @@ describe('preload API', () => {
       ['settings:save', {}],
       ['settings:read-payment'],
       ['settings:save-payment', {}],
+      ['media:select-image', 'square'],
+      ['media:save-square-crop', { selectionId: 'id', x: 0, y: 0, width: 1, height: 1 }],
       ['media:import-square-image'],
       ['media:import-welcome-image'],
       ['orders:create', {}],
       ['orders:read', 'order'],
       ['admin:authenticate', 'password'],
+      ['admin:logout'],
       ['admin:change-password', 'current', 'next-password'],
       ['admin:export-backup'],
       ['admin:import-backup'],

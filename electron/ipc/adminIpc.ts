@@ -117,4 +117,10 @@ export function registerAdminIpc({
     await store.write(await createCredential(nextPassword));
     security.invalidateAllAdminSessions();
   });
+
+  ipcMain.handle(IPC_CHANNELS.adminLogout, (event, ...args) => {
+    security.authorizePublic(event);
+    z.tuple([]).parse(args);
+    security.invalidateAdminSession(event);
+  });
 }
