@@ -168,6 +168,10 @@ export function registerMediaIpc({
       .png()
       .toBuffer();
     const targetName = `${generatedIdSchema.parse(createId())}.png`;
+    const metadata = await validateImageContent(content, targetName);
+    if (metadata.width !== crop.width || metadata.height !== crop.height) {
+      throw new Error('Generated crop dimensions do not match request');
+    }
     await consistencyLock.withWrite(() =>
       installBufferIfAbsentAtomic({ content, targetPath: join(imagesDirectory, targetName) }),
     );

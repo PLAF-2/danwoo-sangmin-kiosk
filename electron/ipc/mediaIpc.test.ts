@@ -56,6 +56,38 @@ describe('media IPC', () => {
     expect(selection.previewDataUrl.length).toBeLessThanOrEqual(512 * 1024);
   });
 
+  it('rejects an oversized encoded crop without installing it', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'highest-media-'));
+    directories.push(directory);
+    const source = join(directory, 'compressed-source.jpg');
+    await sharp(randomBytes(2048 * 2048 * 3), { raw: { width: 2048, height: 2048, channels: 3 } })
+      .jpeg({ quality: 85 })
+      .toFile(source);
+    const ipcMain = createTestIpcMain();
+    const security = createTestIpcSecurity();
+    const event = createTestIpcEvent();
+    security.createAdminSession(event);
+    registerMediaIpc({
+      ipcMain,
+      imagesDirectory: join(directory, 'images'),
+      dialog: { showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: [source] }) },
+      createId: () => 'oversized-crop',
+      security,
+    });
+
+    const selection = await ipcMain.invokeFrom(event, 'media:select-image', 'square') as { selectionId: string };
+    await expect(ipcMain.invokeFrom(event, 'media:save-square-crop', {
+      selectionId: selection.selectionId,
+      x: 0,
+      y: 0,
+      width: 2048,
+      height: 2048,
+    })).rejects.toThrow('size limit');
+    await expect(readFile(join(directory, 'images', 'oversized-crop.png'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+  });
+
   it('selects a non-square image without exposing its path and saves the requested square crop', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'highest-media-'));
     directories.push(directory);
