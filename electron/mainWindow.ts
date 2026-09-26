@@ -11,6 +11,19 @@ export interface BrowserWindowConstructor {
   new (options: Record<string, unknown>): BrowserWindowLike;
 }
 
+export interface FocusableWindow {
+  isMinimized(): boolean;
+  restore(): void;
+  focus(): void;
+}
+
+export function focusExistingKioskWindow(windows: FocusableWindow[]): void {
+  const window = windows[0];
+  if (!window) return;
+  if (window.isMinimized()) window.restore();
+  window.focus();
+}
+
 export function createKioskWindow({
   BrowserWindow,
   isPackaged,

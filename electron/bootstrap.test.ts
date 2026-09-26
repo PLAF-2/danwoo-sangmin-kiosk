@@ -1,8 +1,52 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { startApplication } from './bootstrap';
+import { startApplication, startSingleInstanceApplication } from './bootstrap';
 
 describe('main-process bootstrap', () => {
+  it('quits a second instance before storage initialization, IPC, or window creation', async () => {
+    const initialize = vi.fn(async () => 'initialized');
+    const register = vi.fn();
+    const createWindow = vi.fn();
+    const quit = vi.fn();
+
+    await startSingleInstanceApplication({
+      requestSingleInstanceLock: vi.fn(() => false),
+      onSecondInstance: vi.fn(),
+      focusExistingWindow: vi.fn(),
+      initialize,
+      register,
+      createWindow,
+      quit,
+      log: { error: vi.fn() },
+    });
+
+    expect(quit).toHaveBeenCalledOnce();
+    expect(initialize).not.toHaveBeenCalled();
+    expect(register).not.toHaveBeenCalled();
+    expect(createWindow).not.toHaveBeenCalled();
+  });
+
+  it('focuses the existing window when a second instance is requested', async () => {
+    let secondInstanceListener: (() => void) | undefined;
+    const focusExistingWindow = vi.fn();
+
+    await startSingleInstanceApplication({
+      requestSingleInstanceLock: vi.fn(() => true),
+      onSecondInstance: vi.fn((listener) => {
+        secondInstanceListener = listener;
+      }),
+      focusExistingWindow,
+      initialize: vi.fn(async () => 'initialized'),
+      register: vi.fn(),
+      createWindow: vi.fn(),
+      quit: vi.fn(),
+      log: { error: vi.fn() },
+    });
+    secondInstanceListener?.();
+
+    expect(focusExistingWindow).toHaveBeenCalledOnce();
+  });
+
   it('initializes user data before registering IPC and opening the window', async () => {
     const events: string[] = [];
     const paths = { userData: 'test-user-data' };

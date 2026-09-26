@@ -1,8 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createKioskWindow } from './mainWindow';
+import { createKioskWindow, focusExistingKioskWindow } from './mainWindow';
 
 describe('kiosk BrowserWindow', () => {
+  it('restores and focuses the existing kiosk window safely', () => {
+    const minimizedWindow = {
+      isMinimized: vi.fn(() => true),
+      restore: vi.fn(),
+      focus: vi.fn(),
+    };
+
+    expect(() => focusExistingKioskWindow([])).not.toThrow();
+    focusExistingKioskWindow([minimizedWindow]);
+
+    expect(minimizedWindow.restore).toHaveBeenCalledOnce();
+    expect(minimizedWindow.focus).toHaveBeenCalledOnce();
+  });
+
   it.each([
     [false, false],
     [true, true],

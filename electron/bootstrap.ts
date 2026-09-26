@@ -22,3 +22,26 @@ export async function startApplication<T>({
     return null;
   }
 }
+
+export async function startSingleInstanceApplication<T>({
+  requestSingleInstanceLock,
+  onSecondInstance,
+  focusExistingWindow,
+  ...application
+}: {
+  requestSingleInstanceLock(): boolean;
+  onSecondInstance(listener: () => void): void;
+  focusExistingWindow(): void;
+  initialize(): Promise<T>;
+  register(value: T): void;
+  createWindow(value: T): void;
+  quit(): void;
+  log: { error(message: string, error: unknown): void };
+}): Promise<T | null> {
+  if (!requestSingleInstanceLock()) {
+    application.quit();
+    return null;
+  }
+  onSecondInstance(focusExistingWindow);
+  return startApplication(application);
+}

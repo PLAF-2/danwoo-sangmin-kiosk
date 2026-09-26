@@ -54,7 +54,7 @@ const backupSchema = z
     catalog: catalogDataSchema,
     settings: appSettingsSchema,
     payment: paymentSettingsSchema,
-    images: z.array(backupImageSchema),
+    images: z.array(backupImageSchema).max(maxBackupImageCount, 'backup image count limit exceeded'),
   })
   .strict()
   .superRefine((backup, context) => {
@@ -247,11 +247,12 @@ export function registerBackupIpc({
       const backup = backupSchema.parse(
         JSON.parse((await readBoundedRegularFile(filePath, maxBackupFileBytes, 'Backup')).toString('utf8')),
       );
-      const decodedImages = await Promise.all(backup.images.map(async (image) => {
+      const decodedImages: Array<{ path: string; content: Buffer }> = [];
+      for (const image of backup.images) {
         const content = Buffer.from(image.contentBase64, 'base64');
         await validateImageContent(content, image.path, { allowSvg: true });
-        return { path: image.path, content };
-      }));
+        decodedImages.push({ path: image.path, content });
+      }
       const transactionRoot = await fileOperations.mkdtemp(join(paths.userData, '.highest-restore-'));
       const stage = join(transactionRoot, 'stage');
       const restoreFileOperations = {

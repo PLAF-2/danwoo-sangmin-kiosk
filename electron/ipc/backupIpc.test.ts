@@ -608,4 +608,39 @@ describe('backup IPC', () => {
     await expect(ipcMain.invokeFrom(event, 'admin:import-backup')).rejects.toThrow();
     expect((await readdir(paths.userData)).some((name) => name.startsWith('.highest-restore-'))).toBe(false);
   });
+
+  it('rejects an over-count backup before decoding images or creating restore artifacts', async () => {
+    const paths = await setupPaths();
+    const importFile = join(paths.userData, 'too-many-images.json');
+    const catalog = createCatalogData();
+    catalog.products[0] = {
+      ...catalog.products[0]!,
+      thumbnailImage: 'images/image-0.png',
+      detailImages: ['images/image-0.png'],
+    };
+    await writeFile(
+      importFile,
+      JSON.stringify({
+        version: 1,
+        catalog,
+        settings: createAppSettings(),
+        payment: createPaymentSettings(),
+        images: Array.from({ length: 501 }, (_, index) => ({
+          path: `images/image-${index}.png`,
+          contentBase64: 'AA==',
+        })),
+      }),
+    );
+    const ipcMain = createTestIpcMain();
+    const event = registerAuthorizedBackup(ipcMain, paths, {
+      showSaveDialog: vi.fn(),
+      showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: [importFile] }),
+    });
+
+    await expect(ipcMain.invokeFrom(event, 'admin:import-backup')).rejects.toThrow(
+      'backup image count limit exceeded',
+    );
+    expect((await readdir(paths.userData)).some((name) => name.startsWith('.highest-restore-'))).toBe(false);
+    await expect(readFile(paths.catalogFile, 'utf8')).resolves.toContain('owned.png');
+  });
 });
