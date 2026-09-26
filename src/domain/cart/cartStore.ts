@@ -15,7 +15,9 @@ interface CartState {
   subtotal: () => number;
 }
 
-const emptyItems: Record<string, CartItem> = {};
+function createItemRecord(items?: Record<string, CartItem>): Record<string, CartItem> {
+  return Object.assign(Object.create(null) as Record<string, CartItem>, items);
+}
 
 function safeMaximum(maxQuantity: number) {
   return Number.isFinite(maxQuantity) ? Math.max(1, Math.trunc(maxQuantity)) : 1;
@@ -26,70 +28,61 @@ function safeAddition(quantity: number) {
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
-  items: emptyItems,
+  items: createItemRecord(),
   add: (product, quantity = 1) => {
     set(({ items }) => {
-      const existing = items[product.id];
+      const existing = Object.hasOwn(items, product.id) ? items[product.id] : undefined;
       const maximum = safeMaximum(product.maxQuantity);
       const nextQuantity = Math.min((existing?.quantity ?? 0) + safeAddition(quantity), maximum);
-
-      return {
-        items: {
-          ...items,
-          [product.id]: {
-            productId: product.id,
-            quantity: nextQuantity,
-            // A cart line is a price snapshot. Later catalog changes do not rewrite it.
-            capturedUnitPrice: existing?.capturedUnitPrice ?? product.price,
-          },
-        },
+      const nextItems = createItemRecord(items);
+      nextItems[product.id] = {
+        productId: product.id,
+        quantity: nextQuantity,
+        // A cart line is a price snapshot. Later catalog changes do not rewrite it.
+        capturedUnitPrice: existing?.capturedUnitPrice ?? product.price,
       };
+
+      return { items: nextItems };
     });
   },
   increment: (productId, maxQuantity) => {
     set(({ items }) => {
-      const existing = items[productId];
+      const existing = Object.hasOwn(items, productId) ? items[productId] : undefined;
       if (!existing) return { items };
 
-      return {
-        items: {
-          ...items,
-          [productId]: {
-            ...existing,
-            quantity: Math.min(existing.quantity + 1, safeMaximum(maxQuantity)),
-          },
-        },
+      const nextItems = createItemRecord(items);
+      nextItems[productId] = {
+        ...existing,
+        quantity: Math.min(existing.quantity + 1, safeMaximum(maxQuantity)),
       };
+
+      return { items: nextItems };
     });
   },
   decrement: (productId) => {
     set(({ items }) => {
-      const existing = items[productId];
+      const existing = Object.hasOwn(items, productId) ? items[productId] : undefined;
       if (!existing) return { items };
 
+      const nextItems = createItemRecord(items);
       if (existing.quantity <= 1) {
-        const nextItems = { ...items };
         delete nextItems[productId];
         return { items: nextItems };
       }
 
-      return {
-        items: {
-          ...items,
-          [productId]: { ...existing, quantity: existing.quantity - 1 },
-        },
-      };
+      nextItems[productId] = { ...existing, quantity: existing.quantity - 1 };
+      return { items: nextItems };
     });
   },
   remove: (productId) => {
     set(({ items }) => {
-      if (!items[productId]) return { items };
-      const nextItems = { ...items };
+      if (!Object.hasOwn(items, productId)) return { items };
+      const nextItems = createItemRecord(items);
       delete nextItems[productId];
       return { items: nextItems };
     });
   },
-  clear: () => set({ items: {} }),
+  clear: () => set({ items: createItemRecord() }),
   itemCount: () =>
     Object.values(get().items).reduce((total, item) => total + item.quantity, 0),
   subtotal: () =>

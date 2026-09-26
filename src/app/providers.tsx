@@ -1,7 +1,9 @@
-import { RouterProvider, type createMemoryRouter } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
+
+import type { AppRouter } from './router';
 
 interface AppProvidersProps {
-  router: ReturnType<typeof createMemoryRouter>;
+  router: AppRouter;
 }
 
 export function AppProviders({ router }: AppProvidersProps) {

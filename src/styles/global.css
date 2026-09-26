@@ -43,10 +43,17 @@ textarea {
 }
 
 button,
-[role='button'],
-a {
+[role='button'] {
   min-width: var(--touch-target-min);
   min-height: var(--touch-target-min);
+}
+
+.touch-target {
+  display: inline-flex;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  align-items: center;
+  justify-content: center;
 }
 
 :focus-visible {

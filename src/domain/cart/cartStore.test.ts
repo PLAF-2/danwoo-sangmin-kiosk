@@ -76,6 +76,33 @@ describe('cart store', () => {
     expect(useCartStore.getState().items).toEqual({});
   });
 
+  it.each(['constructor', '__proto__', 'toString'])(
+    'stores prototype-name product id %s as an ordinary cart line',
+    (productId) => {
+      useCartStore.getState().increment(productId, 4);
+      useCartStore.getState().decrement(productId);
+      expect(Object.hasOwn(useCartStore.getState().items, productId)).toBe(false);
+      expect(useCartStore.getState().itemCount()).toBe(0);
+      expect(useCartStore.getState().subtotal()).toBe(0);
+
+      useCartStore.getState().add({ id: productId, price: 1_500, maxQuantity: 4 }, 2);
+
+      const state = useCartStore.getState();
+      expect(Object.hasOwn(state.items, productId)).toBe(true);
+      expect(state.items[productId]).toEqual({
+        productId,
+        quantity: 2,
+        capturedUnitPrice: 1_500,
+      });
+      expect(state.itemCount()).toBe(2);
+      expect(state.subtotal()).toBe(3_000);
+      expect(Number.isFinite(state.subtotal())).toBe(true);
+
+      state.remove(productId);
+      expect(Object.hasOwn(useCartStore.getState().items, productId)).toBe(false);
+    },
+  );
+
   it('clears all items and totals', () => {
     useCartStore.getState().add(product, 2);
 

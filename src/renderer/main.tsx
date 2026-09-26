@@ -1,7 +1,6 @@
-import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { App } from './App';
+import { createAppRuntime } from '../app/bootstrap';
 import '../styles/global.css';
 
 const root = document.getElementById('root');
@@ -10,8 +9,6 @@ if (!root) {
   throw new Error('Renderer root element was not found');
 }
 
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+const runtime = createAppRuntime();
+
+createRoot(root).render(runtime.element);

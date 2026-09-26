@@ -40,7 +40,9 @@ describe('application router', () => {
     render(<RouterProvider router={router} />);
 
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Return to start' })).toHaveAttribute('href', '/');
+    const returnLink = screen.getByRole('link', { name: 'Return to start' });
+    expect(returnLink).toHaveAttribute('href', '/');
+    expect(returnLink).toHaveClass('touch-target');
     router.dispose();
   });
 

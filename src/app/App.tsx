@@ -1,10 +1,10 @@
-import { useState } from 'react';
-
 import { AppProviders } from './providers';
-import { createAppRouter } from './router';
+import type { AppRouter } from './router';
 
-export function App() {
-  const [router] = useState(createAppRouter);
+interface AppProps {
+  router: AppRouter;
+}
 
+export function App({ router }: AppProps) {
   return <AppProviders router={router} />;
 }

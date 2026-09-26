@@ -11,6 +11,8 @@ interface PlaceholderRouteProps {
   owner: string;
 }
 
+export type AppRouter = ReturnType<typeof createMemoryRouter>;
+
 function PlaceholderRoute({ heading, owner }: PlaceholderRouteProps) {
   return (
     <main aria-labelledby="route-heading">
@@ -47,7 +49,9 @@ function NotFoundPlaceholder() {
     <main aria-labelledby="not-found-heading">
       <h1 id="not-found-heading">Page not found</h1>
       <p>This route is not part of the kiosk application.</p>
-      <Link to="/">Return to start</Link>
+      <Link className="touch-target" to="/">
+        Return to start
+      </Link>
     </main>
   );
 }
