@@ -71,7 +71,7 @@ export function CheckoutPage() {
         setAlert(review.blockers.join(' '));
         return;
       }
-      if (review.priceChanges.length > 0 && review.priceKey !== priceReview?.priceKey) {
+      if ((priceReview || review.priceChanges.length > 0) && review.priceKey !== priceReview?.priceKey) {
         setPriceReview(review);
         setAlert('상품 가격이 변경되었습니다. 변경 금액을 확인해 주세요.');
         return;
@@ -88,7 +88,7 @@ export function CheckoutPage() {
     }
   }
 
-  const total = priceReview?.total ?? items.reduce((sum, item) => sum + item.quantity * item.capturedUnitPrice, 0);
+  const total = catalog ? reviewCart(items, catalog).total : 0;
 
   return (
     <main className="checkout-page">
@@ -109,7 +109,7 @@ export function CheckoutPage() {
                 <span>수량 {item.quantity}개</span>
                 {change && <span className="checkout-price-change">{won(change.before)} → {won(change.after)}</span>}
               </div>
-              <b>{won(item.quantity * (change?.after ?? item.capturedUnitPrice))}</b>
+              <b>{won(item.quantity * (product?.price ?? item.capturedUnitPrice))}</b>
             </article>
           );
         })}

@@ -40,7 +40,7 @@ describe('CheckoutPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows captured cart rows and totals in separate scrolling and fixed sections', async () => {
+  it('shows cart rows and totals in separate scrolling and fixed sections', async () => {
     renderCheckout();
     await ready();
     expect(screen.getByRole('heading', { name: '주문 내용을 확인해 주세요' })).toBeInTheDocument();
@@ -58,6 +58,16 @@ describe('CheckoutPage', () => {
     expect(within(fixed).getByText('0원')).toBeInTheDocument();
     expect(within(fixed).getAllByText('50,000원')).toHaveLength(2);
     expect(within(fixed).getByRole('button', { name: '결제하기' })).toBeInTheDocument();
+  });
+
+  it('displays current catalog prices when captured cart prices are older', async () => {
+    catalogRead.mockResolvedValue(createCatalogData({ products: [createProduct({ price: 30_000 })] }));
+    renderCheckout();
+    await ready();
+    expect(within(screen.getByTestId('checkout-items')).getByText('60,000원')).toBeInTheDocument();
+    expect(within(screen.getByTestId('checkout-fixed')).getAllByText('60,000원')).toHaveLength(2);
+    expect(screen.queryByText('50,000원')).not.toBeInTheDocument();
+    expect(useCartStore.getState().items['horizon-album']?.capturedUnitPrice).toBe(25_000);
   });
 
   it('disables submission for an empty cart', async () => {
@@ -153,6 +163,25 @@ describe('CheckoutPage', () => {
     fireEvent.click(confirm);
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
     expect(catalogRead).toHaveBeenCalledTimes(4);
+  });
+
+  it('requires renewed confirmation when the price returns to the captured price', async () => {
+    renderCheckout();
+    const button = await ready();
+    catalogRead.mockResolvedValueOnce(createCatalogData({ products: [createProduct({ price: 30_000 })] }));
+    fireEvent.click(button);
+    const confirm = await screen.findByRole('button', { name: '변경 금액 확인하고 계속' });
+    await act(async () => { fireEvent.click(confirm); });
+    expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
+    expect(within(screen.getByTestId('checkout-items')).getByText('50,000원')).toBeInTheDocument();
+    expect(within(screen.getByTestId('checkout-fixed')).getAllByText('50,000원')).toHaveLength(2);
+    expect(screen.queryByText('25,000원 → 30,000원')).not.toBeInTheDocument();
+    expect(confirm).toBeEnabled();
+    expect(crypto.randomUUID).not.toHaveBeenCalled();
+    fireEvent.click(confirm);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
+    expect(catalogRead).toHaveBeenCalledTimes(4);
+    expect(paymentRead).toHaveBeenCalledTimes(4);
   });
 
   it('locks synchronously so rapid clicks produce one reread and one request', async () => {
