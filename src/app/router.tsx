@@ -6,6 +6,8 @@ import {
   type RouteObject,
 } from 'react-router-dom';
 
+import { WelcomePage } from '../features/welcome/WelcomePage';
+
 interface PlaceholderRouteProps {
   heading: string;
   owner: string;
@@ -59,7 +61,7 @@ function NotFoundPlaceholder() {
 export const appRoutes: RouteObject[] = [
   {
     path: '/',
-    element: <PlaceholderRoute heading="HIGHEST Kiosk" owner="Welcome & Shell thread" />,
+    element: <WelcomePage />,
   },
   {
     path: '/shop',
