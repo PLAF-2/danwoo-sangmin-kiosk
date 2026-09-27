@@ -14,7 +14,6 @@
 
 **Files:**
 - Create: `src/features/welcome/WelcomePage.test.tsx`
-- Modify: `src/app/router.tsx`
 
 - [ ] **Step 1: Write failing route tests**
 
@@ -37,25 +36,14 @@ it('uses persisted background image, focal position, scale, logo visibility, and
 
 Run: `npm test -- src/features/welcome/WelcomePage.test.tsx`
 
-Expected: FAIL because the welcome route and page do not exist.
-
-- [ ] **Step 3: Add the page to the existing `/` route**
-
-```tsx
-{ path: '/', element: <WelcomePage /> }
-```
-
-- [ ] **Step 4: Verify the focused test passes**
-
-Run: `npm test -- src/features/welcome/WelcomePage.test.tsx`
-
-Expected: PASS.
+Expected: FAIL because `WelcomePage` does not exist.
 
 ### Task 2: Safe settings and navigation behaviour
 
 **Files:**
 - Create: `src/features/welcome/WelcomePage.tsx`
 - Create: `src/features/welcome/WelcomePage.module.css`
+- Modify: `src/app/router.tsx`
 - Modify: `src/features/welcome/WelcomePage.test.tsx`
 
 - [ ] **Step 1: Write failing fallback and start-action tests**
@@ -82,12 +70,14 @@ Run: `npm test -- src/features/welcome/WelcomePage.test.tsx`
 
 Expected: FAIL because settings fallback and start navigation are absent.
 
-- [ ] **Step 3: Implement the smallest local settings state**
+- [ ] **Step 3: Implement the smallest local settings state and route**
 
 ```tsx
 const [settings, setSettings] = useState(defaultWelcomeSettings);
 useEffect(() => { void window.kiosk.settings.read().then(setSettings).catch(() => undefined); }, []);
 const navigate = useNavigate();
+// src/app/router.tsx
+{ path: '/', element: <WelcomePage /> }
 ```
 
 - [ ] **Step 4: Verify the tests pass**
