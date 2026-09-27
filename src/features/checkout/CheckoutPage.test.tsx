@@ -164,8 +164,9 @@ describe('CheckoutPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '변경 금액 확인하고 계속' }));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
     expect(JSON.parse(screen.getByTestId('request-state').textContent!)).toEqual({
-      items: [createCartItem({ quantity: 2 })], payment: latestPayment, requestId,
+      items: [createCartItem({ quantity: 2, capturedUnitPrice: 30_000 })], payment: latestPayment, requestId,
     });
+    expect(useCartStore.getState().items['horizon-album']?.capturedUnitPrice).toBe(25_000);
   });
 
   it('requires confirmation again if the price changes after the first confirmation', async () => {

@@ -79,7 +79,11 @@ export function CheckoutPage() {
         setAlert('상품 가격이 변경되었습니다. 변경 금액을 확인해 주세요.');
         return;
       }
-      navigate('/processing', { state: { items: currentItems, payment: latestPayment, requestId: crypto.randomUUID() } });
+      navigate('/processing', { state: {
+        items: review.lines.map(({ item, product }) => ({ ...item, capturedUnitPrice: product.price })),
+        payment: latestPayment,
+        requestId: crypto.randomUUID(),
+      } });
       proceeding = true;
     } catch {
       setAlert('주문 정보를 확인하지 못했습니다. 다시 시도해 주세요.');

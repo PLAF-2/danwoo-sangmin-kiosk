@@ -64,7 +64,7 @@ describe('ProcessingPage', () => {
     await advance(processingSeconds * 1000 - 1);
     expect(create).not.toHaveBeenCalled();
     await advance(1);
-    expect(create).toHaveBeenCalledExactlyOnceWith({ requestId, items: state.items });
+    expect(create).toHaveBeenCalledExactlyOnceWith({ requestId, items: state.items, expectedPayment: state.payment });
     await advance(10_000);
     expect(create).toHaveBeenCalledTimes(1);
     expect(useCartStore.getState().items).toBe(cart);
@@ -97,7 +97,7 @@ describe('ProcessingPage', () => {
     expect(create).toHaveBeenCalledTimes(1);
     await advance(1);
     expect(create).toHaveBeenCalledTimes(2);
-    expect(create).toHaveBeenLastCalledWith({ requestId: retryRequestId, items: state.items });
+    expect(create).toHaveBeenLastCalledWith({ requestId: retryRequestId, items: state.items, expectedPayment: state.payment });
     expect(screen.getByTestId('location')).toHaveTextContent('/complete/20260926-0001');
   });
 
@@ -116,7 +116,7 @@ describe('ProcessingPage', () => {
     expect(create).toHaveBeenCalledTimes(1);
     await advance(1);
     expect(create).toHaveBeenCalledTimes(2);
-    expect(create).toHaveBeenLastCalledWith({ requestId, items: processingState().items });
+    expect(create).toHaveBeenLastCalledWith({ requestId, items: processingState().items, expectedPayment: processingState().payment });
     expect(screen.getByTestId('location')).toHaveTextContent('/complete/20260926-0001');
     await advance(10_000);
     expect(create).toHaveBeenCalledTimes(2);

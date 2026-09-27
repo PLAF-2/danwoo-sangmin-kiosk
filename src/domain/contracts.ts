@@ -188,4 +188,5 @@ export type PaymentSettings = z.infer<typeof paymentSettingsSchema>;
 export interface CreateOrderInput {
   requestId: string;
   items: CartItem[];
+  expectedPayment: PaymentSettings;
 }

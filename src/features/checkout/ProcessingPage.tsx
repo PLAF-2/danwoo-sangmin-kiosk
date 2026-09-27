@@ -35,7 +35,7 @@ export function ProcessingPage() {
     let active = true;
     const timer = window.setTimeout(async () => {
       try {
-        const order = await window.kiosk.orders.create({ requestId: state.requestId, items: state.items });
+        const order = await window.kiosk.orders.create({ requestId: state.requestId, items: state.items, expectedPayment: state.payment });
         if (!active) return;
         if (order.status === 'paid' || order.status === 'received') {
           navigate(`/complete/${encodeURIComponent(order.orderNumber)}`, { replace: true });
