@@ -16,6 +16,8 @@ import { ProductAdmin } from '../features/admin/ProductAdmin';
 import { CategoriesAdmin, PaymentAdmin, SystemAdmin, WelcomeAdmin } from '../features/admin/SettingsAdmin';
 
 import { CatalogPage } from '../features/catalog/CatalogPage';
+import { CheckoutPage } from '../features/checkout/CheckoutPage';
+import { ProcessingPage } from '../features/checkout/ProcessingPage';
 import { WelcomePage } from '../features/welcome/WelcomePage';
 
 interface PlaceholderRouteProps {
@@ -80,11 +82,11 @@ export const appRoutes: RouteObject[] = [
   { path: '/products/:productId', element: <ProductPlaceholder /> },
   {
     path: '/checkout',
-    element: <PlaceholderRoute heading="Checkout placeholder" owner="Checkout & Payment thread" />,
+    element: <CheckoutPage />,
   },
   {
     path: '/processing',
-    element: <PlaceholderRoute heading="Processing placeholder" owner="Checkout & Payment thread" />,
+    element: <ProcessingPage />,
   },
   { path: '/complete/:orderNumber', element: <CompletePlaceholder /> },
   {
