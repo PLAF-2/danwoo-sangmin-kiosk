@@ -57,6 +57,7 @@ export interface KioskApi {
   };
   admin: {
     authenticate(password: string): Promise<boolean>;
+    keepAlive(): Promise<void>;
     logout(): Promise<void>;
     changePassword(currentPassword: string, nextPassword: string): Promise<void>;
     exportBackup(): Promise<string | null>;

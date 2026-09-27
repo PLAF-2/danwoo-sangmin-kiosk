@@ -8,6 +8,7 @@
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
     "src/test/**/*.ts",
+    "src/global.d.ts",
     "electron/**/*.test.ts"
   ]
 }

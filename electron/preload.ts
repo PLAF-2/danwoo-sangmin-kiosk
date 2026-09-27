@@ -32,6 +32,7 @@ const kiosk: KioskApi = Object.freeze({
   }),
   admin: Object.freeze({
     authenticate: (password: string) => ipcRenderer.invoke(IPC_CHANNELS.adminAuthenticate, password),
+    keepAlive: () => ipcRenderer.invoke(IPC_CHANNELS.adminKeepAlive),
     logout: () => ipcRenderer.invoke(IPC_CHANNELS.adminLogout),
     changePassword: (currentPassword: string, nextPassword: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.adminChangePassword, currentPassword, nextPassword),

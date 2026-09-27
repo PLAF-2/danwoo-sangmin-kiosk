@@ -3,8 +3,17 @@ import {
   createHashRouter,
   createMemoryRouter,
   useParams,
+  Outlet,
   type RouteObject,
 } from 'react-router-dom';
+import {
+  AdminGuard,
+  AdminLogin,
+  AdminSessionProvider,
+  AdminShell,
+} from '../features/admin/AdminApp';
+import { ProductAdmin } from '../features/admin/ProductAdmin';
+import { CategoriesAdmin, PaymentAdmin, SystemAdmin, WelcomeAdmin } from '../features/admin/SettingsAdmin';
 
 interface PlaceholderRouteProps {
   heading: string;
@@ -76,28 +85,24 @@ export const appRoutes: RouteObject[] = [
   },
   { path: '/complete/:orderNumber', element: <CompletePlaceholder /> },
   {
-    path: '/admin/login',
-    element: <PlaceholderRoute heading="Admin login placeholder" owner="Admin thread" />,
-  },
-  {
-    path: '/admin/products',
-    element: <PlaceholderRoute heading="Admin products placeholder" owner="Admin thread" />,
-  },
-  {
-    path: '/admin/categories',
-    element: <PlaceholderRoute heading="Admin categories placeholder" owner="Admin thread" />,
-  },
-  {
-    path: '/admin/welcome',
-    element: <PlaceholderRoute heading="Admin welcome placeholder" owner="Admin thread" />,
-  },
-  {
-    path: '/admin/payment',
-    element: <PlaceholderRoute heading="Admin payment placeholder" owner="Admin thread" />,
-  },
-  {
-    path: '/admin/system',
-    element: <PlaceholderRoute heading="Admin system placeholder" owner="Admin thread" />,
+    path: '/admin',
+    element: <AdminSessionProvider><Outlet /></AdminSessionProvider>,
+    children: [
+      { path: 'login', element: <AdminLogin /> },
+      {
+        element: <AdminGuard />,
+        children: [{
+          element: <AdminShell />,
+          children: [
+            { path: 'products', element: <ProductAdmin /> },
+            { path: 'categories', element: <CategoriesAdmin /> },
+            { path: 'welcome', element: <WelcomeAdmin /> },
+            { path: 'payment', element: <PaymentAdmin /> },
+            { path: 'system', element: <SystemAdmin /> },
+          ],
+        }],
+      },
+    ],
   },
   { path: '*', element: <NotFoundPlaceholder /> },
 ];

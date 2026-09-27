@@ -1,0 +1,157 @@
+.admin-login,
+.admin-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 85% 10%, rgb(143 211 244 / 38%), transparent 26rem),
+    linear-gradient(145deg, #f8fcff, var(--color-cream));
+}
+
+.admin-login {
+  display: grid;
+  place-items: center;
+  padding: var(--space-8);
+}
+
+.admin-login form,
+.admin-panel,
+.admin-editor,
+.admin-crop {
+  border: 1px solid rgb(57 117 198 / 24%);
+  border-radius: var(--radius-lg);
+  background: rgb(255 255 255 / 94%);
+  box-shadow: var(--shadow-lg);
+}
+
+.admin-login form {
+  width: min(100%, 28rem);
+  padding: var(--space-8);
+}
+
+.admin-eyebrow {
+  margin: 0 0 var(--space-2);
+  color: var(--color-blue);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+}
+
+.admin-shell > aside {
+  position: sticky;
+  top: 0;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-4);
+  color: white;
+  background: linear-gradient(180deg, var(--color-navy), #245ca6);
+}
+
+.admin-shell > aside > strong { font-size: 1.4rem; }
+.admin-shell > aside .admin-eyebrow { color: var(--color-sky); }
+.admin-shell nav { display: grid; gap: var(--space-2); }
+.admin-shell nav a,
+.admin-shell aside button {
+  min-height: var(--touch-target-min);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--radius-md);
+  color: white;
+  background: transparent;
+  text-decoration: none;
+}
+.admin-shell nav a.active { color: var(--color-navy); background: white; }
+.admin-shell aside button { margin-top: auto; cursor: pointer; }
+.admin-shell > main { min-width: 0; padding: var(--space-8); }
+
+.admin-page { width: min(100%, 90rem); margin: 0 auto; }
+.admin-page-header { display: flex; align-items: end; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); }
+.admin-page h1 { margin: 0; font-family: var(--font-family-display); font-size: clamp(1.8rem, 4vw, 2.7rem); }
+.admin-page h2 { color: var(--color-navy); }
+
+.admin-page button,
+.admin-login button {
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  color: white;
+  background: var(--color-blue);
+  font-weight: 750;
+  cursor: pointer;
+}
+.admin-page button.danger { background: #a52d3b; }
+.admin-page button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.admin-page input,
+.admin-page select,
+.admin-page textarea,
+.admin-login input {
+  width: 100%;
+  min-height: var(--touch-target-min);
+  padding: var(--space-3);
+  border: 1px solid #afc9df;
+  border-radius: var(--radius-sm);
+  color: var(--color-navy);
+  background: white;
+}
+.admin-page textarea { min-height: 6rem; resize: vertical; }
+.admin-page label,
+.admin-login label { display: grid; gap: var(--space-2); color: var(--color-navy); font-weight: 700; }
+[role='alert'] { color: #9b2335; font-weight: 700; }
+[role='status'] { color: #136b4d; font-weight: 700; }
+
+.admin-table-wrap { overflow-x: auto; border: 1px solid var(--color-mist); border-radius: var(--radius-md); background: white; box-shadow: var(--shadow-sm); }
+.admin-table-wrap table { width: 100%; border-collapse: collapse; }
+.admin-table-wrap th,
+.admin-table-wrap td { padding: var(--space-3); border-bottom: 1px solid var(--color-mist); text-align: left; white-space: nowrap; }
+.admin-table-wrap th { color: var(--color-blue); background: #eff8ff; }
+.admin-actions,
+.admin-media-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+
+.admin-modal {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: rgb(12 34 62 / 58%);
+}
+.admin-editor,
+.admin-crop { width: min(100%, 54rem); max-height: 90vh; overflow: auto; padding: var(--space-6); }
+.admin-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.admin-wide { grid-column: 1 / -1; }
+.admin-editor footer { justify-content: flex-end; margin-top: var(--space-6); }
+.admin-crop { width: min(100%, 30rem); }
+.admin-crop-preview { width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: var(--radius-md); background: var(--color-mist); }
+.admin-crop-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+.admin-category-list { display: grid; gap: var(--space-3); margin-bottom: var(--space-4); }
+.admin-category-row { display: grid; grid-template-columns: minmax(12rem, 2fr) minmax(8rem, 1fr) minmax(6rem, auto); align-items: end; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-md); background: white; box-shadow: var(--shadow-sm); }
+.admin-category-row label:last-child { display: flex; align-items: center; min-height: var(--touch-target-min); }
+.admin-category-row input[type='checkbox'] { width: auto; }
+
+.admin-preview-layout { display: grid; grid-template-columns: minmax(16rem, 25rem) minmax(20rem, 1fr); gap: var(--space-8); align-items: start; }
+.admin-welcome-preview { display: flex; flex-direction: column; align-items: center; justify-content: space-between; overflow: hidden; padding: 15% 8%; border: 8px solid white; border-radius: var(--radius-lg); color: var(--color-navy); background: linear-gradient(var(--color-sky), white); background-repeat: no-repeat; box-shadow: var(--shadow-lg); text-align: center; }
+.admin-welcome-preview strong { font-size: clamp(1.7rem, 5vw, 3.5rem); color: var(--color-blue); }
+.admin-settings-form { display: grid; gap: var(--space-4); }
+.admin-settings-form fieldset { display: grid; gap: var(--space-4); padding: var(--space-4); border: 1px solid var(--color-mist); border-radius: var(--radius-md); }
+.admin-system-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-6); }
+.admin-panel { padding: var(--space-6); }
+
+@media (max-width: 800px) {
+  .admin-shell { grid-template-columns: 1fr; }
+  .admin-shell > aside { position: static; height: auto; }
+  .admin-shell nav { grid-template-columns: repeat(5, minmax(0, 1fr)); overflow-x: auto; }
+  .admin-shell aside button { margin-top: 0; }
+  .admin-shell > main { padding: var(--space-4); }
+  .admin-form-grid,
+  .admin-preview-layout,
+  .admin-system-grid { grid-template-columns: 1fr; }
+  .admin-category-row { grid-template-columns: 1fr; }
+}

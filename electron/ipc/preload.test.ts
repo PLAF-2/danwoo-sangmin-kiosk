@@ -39,6 +39,7 @@ describe('preload API', () => {
     expect(Object.keys(api.orders ?? {})).toEqual(['create', 'read']);
     expect(Object.keys(api.admin ?? {})).toEqual([
       'authenticate',
+      'keepAlive',
       'logout',
       'changePassword',
       'exportBackup',
@@ -65,6 +66,7 @@ describe('preload API', () => {
       orders: { create(value: unknown): Promise<unknown>; read(value: string): Promise<unknown> };
       admin: {
         authenticate(value: string): Promise<unknown>;
+        keepAlive(): Promise<unknown>;
         logout(): Promise<unknown>;
         changePassword(current: string, next: string): Promise<unknown>;
         exportBackup(): Promise<unknown>;
@@ -85,6 +87,7 @@ describe('preload API', () => {
     await api.orders.create({});
     await api.orders.read('order');
     await api.admin.authenticate('password');
+    await api.admin.keepAlive();
     await api.admin.logout();
     await api.admin.changePassword('current', 'next-password');
     await api.admin.exportBackup();
@@ -104,6 +107,7 @@ describe('preload API', () => {
       ['orders:create', {}],
       ['orders:read', 'order'],
       ['admin:authenticate', 'password'],
+      ['admin:keep-alive'],
       ['admin:logout'],
       ['admin:change-password', 'current', 'next-password'],
       ['admin:export-backup'],

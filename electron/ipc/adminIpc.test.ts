@@ -105,4 +105,19 @@ describe('admin password IPC', () => {
       ipcMain.invokeFrom(second, 'admin:change-password', 'initial-secret', 'another-password'),
     ).resolves.toBeUndefined();
   });
+
+  it('keeps alive only an authenticated admin session', async () => {
+    const path = await credentialPath();
+    const ipcMain = createTestIpcMain();
+    const security = createTestIpcSecurity();
+    const event = createTestIpcEvent();
+    registerAdminIpc({ ipcMain, credentialFile: path, security });
+
+    await expect(ipcMain.invokeFrom(event, 'admin:keep-alive')).rejects.toThrow(
+      'Admin authentication required',
+    );
+    security.createAdminSession(event);
+    await expect(ipcMain.invokeFrom(event, 'admin:keep-alive')).resolves.toBeUndefined();
+    await expect(ipcMain.invokeFrom(event, 'admin:keep-alive', 'unexpected')).rejects.toThrow();
+  });
 });

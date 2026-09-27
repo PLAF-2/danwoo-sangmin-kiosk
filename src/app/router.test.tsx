@@ -11,12 +11,14 @@ const routeCases = [
   ['/checkout', 'Checkout placeholder'],
   ['/processing', 'Processing placeholder'],
   ['/complete/HK-20260926-001', 'Order complete placeholder: HK-20260926-001'],
-  ['/admin/login', 'Admin login placeholder'],
-  ['/admin/products', 'Admin products placeholder'],
-  ['/admin/categories', 'Admin categories placeholder'],
-  ['/admin/welcome', 'Admin welcome placeholder'],
-  ['/admin/payment', 'Admin payment placeholder'],
-  ['/admin/system', 'Admin system placeholder'],
+] as const;
+
+const protectedAdminRoutes = [
+  '/admin/products',
+  '/admin/categories',
+  '/admin/welcome',
+  '/admin/payment',
+  '/admin/system',
 ] as const;
 
 describe('application router', () => {
@@ -31,6 +33,20 @@ describe('application router', () => {
     render(<RouterProvider router={router} />);
 
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
+    router.dispose();
+  });
+
+  it('renders the administrator login route', async () => {
+    const router = createAppMemoryRouter(['/admin/login']);
+    render(<RouterProvider router={router} />);
+    expect(await screen.findByRole('heading', { name: '관리자 로그인' })).toBeInTheDocument();
+    router.dispose();
+  });
+
+  it.each(protectedAdminRoutes)('guards %s until authentication', async (path) => {
+    const router = createAppMemoryRouter([path]);
+    render(<RouterProvider router={router} />);
+    expect(await screen.findByRole('heading', { name: '관리자 로그인' })).toBeInTheDocument();
     router.dispose();
   });
 

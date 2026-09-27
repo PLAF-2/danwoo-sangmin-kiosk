@@ -12,6 +12,7 @@ export const IPC_CHANNELS = Object.freeze({
   ordersCreate: 'orders:create',
   ordersRead: 'orders:read',
   adminAuthenticate: 'admin:authenticate',
+  adminKeepAlive: 'admin:keep-alive',
   adminLogout: 'admin:logout',
   adminChangePassword: 'admin:change-password',
   backupExport: 'admin:export-backup',
