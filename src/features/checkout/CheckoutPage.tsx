@@ -25,6 +25,7 @@ export function CheckoutPage() {
   const [pending, setPending] = useState(false);
   const locked = useRef(false);
   const leaving = useRef(false);
+  const displayedReview = catalog ? reviewCart(items, catalog) : null;
 
   useEffect(() => {
     let active = true;
@@ -64,14 +65,16 @@ export function CheckoutPage() {
       ]);
       if (leaving.current) return;
       const review = reviewCart(currentItems, latestCatalog);
-      setCatalog(latestCatalog);
       setPayment(latestPayment);
       if (review.blockers.length > 0) {
         setPriceReview(null);
         setAlert(review.blockers.join(' '));
         return;
       }
-      if ((priceReview || review.priceChanges.length > 0) && review.priceKey !== priceReview?.priceKey) {
+      setCatalog(latestCatalog);
+      if ((!priceReview && review.priceChanges.length > 0)
+        || review.priceKey !== displayedReview?.priceKey
+        || review.total !== displayedReview?.total) {
         setPriceReview(review);
         setAlert('상품 가격이 변경되었습니다. 변경 금액을 확인해 주세요.');
         return;
@@ -88,7 +91,7 @@ export function CheckoutPage() {
     }
   }
 
-  const total = catalog ? reviewCart(items, catalog).total : 0;
+  const total = displayedReview?.total ?? 0;
 
   return (
     <main className="checkout-page">

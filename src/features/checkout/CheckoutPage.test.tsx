@@ -70,6 +70,24 @@ describe('CheckoutPage', () => {
     expect(useCartStore.getState().items['horizon-album']?.capturedUnitPrice).toBe(25_000);
   });
 
+  it('requires confirmation when the displayed discount returns to the captured price on the first click', async () => {
+    catalogRead.mockResolvedValueOnce(createCatalogData({ products: [createProduct({ price: 20_000 })] }));
+    renderCheckout();
+    const button = await ready();
+    expect(within(screen.getByTestId('checkout-fixed')).getAllByText('40,000원')).toHaveLength(2);
+    await act(async () => { fireEvent.click(button); });
+    expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
+    expect(within(screen.getByTestId('checkout-items')).getByText('50,000원')).toBeInTheDocument();
+    expect(within(screen.getByTestId('checkout-fixed')).getAllByText('50,000원')).toHaveLength(2);
+    expect(screen.getByRole('alert')).toHaveTextContent(/가격.*변경/);
+    expect(crypto.randomUUID).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '변경 금액 확인하고 계속' }));
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
+    expect(catalogRead).toHaveBeenCalledTimes(3);
+    expect(paymentRead).toHaveBeenCalledTimes(3);
+    expect(useCartStore.getState().items['horizon-album']?.capturedUnitPrice).toBe(25_000);
+  });
+
   it('disables submission for an empty cart', async () => {
     useCartStore.getState().clear();
     renderCheckout();
