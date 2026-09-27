@@ -25,7 +25,7 @@ export function ProcessingPage() {
     const result = processingStateSchema.safeParse(location.state);
     return result.success ? result.data : null;
   }, [location.state]);
-  const [failure, setFailure] = useState('');
+  const [failure, setFailure] = useState<{ message: string; confirmedFailed: boolean } | null>(null);
 
   useEffect(() => {
     if (!state) {
@@ -33,19 +33,20 @@ export function ProcessingPage() {
       return;
     }
     let active = true;
-    const timer = window.setTimeout(() => {
-      void window.kiosk.orders.create({ requestId: state.requestId, items: state.items })
-        .then((order) => {
-          if (!active) return;
-          if (order.status === 'paid' || order.status === 'received') {
-            navigate(`/complete/${encodeURIComponent(order.orderNumber)}`, { replace: true });
-          } else {
-            setFailure('다시 시도하거나 장바구니를 확인해 주세요.');
-          }
-        })
-        .catch(() => {
-          if (active) setFailure('주문을 저장하지 못했습니다. 다시 시도해 주세요.');
+    const timer = window.setTimeout(async () => {
+      try {
+        const order = await window.kiosk.orders.create({ requestId: state.requestId, items: state.items });
+        if (!active) return;
+        if (order.status === 'paid' || order.status === 'received') {
+          navigate(`/complete/${encodeURIComponent(order.orderNumber)}`, { replace: true });
+        } else {
+          setFailure({ message: '다시 시도하거나 장바구니를 확인해 주세요.', confirmedFailed: order.status === 'failed' });
+        }
+      } catch {
+        if (active) setFailure({
+          message: '주문을 저장하지 못했습니다. 다시 시도해 주세요.', confirmedFailed: false,
         });
+      }
     }, state.payment.processingSeconds * 1000);
     return () => { active = false; window.clearTimeout(timer); };
   }, [navigate, state]);
@@ -56,8 +57,10 @@ export function ProcessingPage() {
     : state.payment.mode === 'simulation' ? '결제 시뮬레이션에 실패했습니다' : '결제 처리에 실패했습니다';
 
   function retry() {
-    setFailure('');
-    navigate('/processing', { replace: true, state: { ...state, requestId: crypto.randomUUID() } });
+    if (!state) return;
+    const requestId = failure?.confirmedFailed ? crypto.randomUUID() : state.requestId;
+    setFailure(null);
+    navigate('/processing', { replace: true, state: { ...state, requestId } });
   }
 
   return (
@@ -67,7 +70,7 @@ export function ProcessingPage() {
         {!failure && <div aria-hidden="true" className="processing-star">✦</div>}
         <h1 id="processing-heading">{failure ? failureHeading : bankQr ? '주문을 접수하고 있어요' : '결제를 처리하고 있어요'}</h1>
         {failure ? <>
-          <p className="checkout-alert" role="alert">{failure}</p>
+          <p className="checkout-alert" role="alert">{failure.message}</p>
           <div className="processing-actions">
             <button onClick={retry} type="button">다시 시도</button>
             <button onClick={() => navigate('/shop')} type="button">장바구니로</button>

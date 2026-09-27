@@ -101,19 +101,25 @@ describe('ProcessingPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/complete/20260926-0001');
   });
 
-  it('shows a useful alert for rejected creation and allows a delayed retry', async () => {
-    create.mockRejectedValueOnce(new Error('Unable to persist order'));
+  it.each(['rejected', 'thrown'] as const)('retries %s creation with the same requestId after the full delay', async (failure) => {
+    if (failure === 'rejected') create.mockRejectedValueOnce(new Error('Unable to persist order'));
+    else create.mockImplementationOnce(() => { throw new Error('Unable to persist order'); });
     renderProcessing();
     await advance(3000);
     expect(screen.getByRole('alert')).toHaveTextContent('주문을 저장하지 못했습니다. 다시 시도해 주세요.');
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+    expect(crypto.randomUUID).not.toHaveBeenCalled();
+    expect(JSON.parse(screen.getByTestId('request-state').textContent!)).toEqual(processingState());
+    expect(screen.getByTestId('navigation-type')).toHaveTextContent('REPLACE');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     await advance(2999);
     expect(create).toHaveBeenCalledTimes(1);
     await advance(1);
     expect(create).toHaveBeenCalledTimes(2);
-    expect(create).toHaveBeenLastCalledWith({ requestId: retryRequestId, items: processingState().items });
+    expect(create).toHaveBeenLastCalledWith({ requestId, items: processingState().items });
     expect(screen.getByTestId('location')).toHaveTextContent('/complete/20260926-0001');
+    await advance(10_000);
+    expect(create).toHaveBeenCalledTimes(2);
   });
 
   it('returns to the shop without clearing the cart', async () => {
