@@ -4,6 +4,6 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"]
   },
-  "include": ["src/renderer", "src/domain", "src/services", "src/global.d.ts"],
+  "include": ["src/renderer", "src/app", "src/features", "src/domain", "src/services", "src/global.d.ts"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }
