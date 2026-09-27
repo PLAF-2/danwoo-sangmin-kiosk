@@ -1,12 +1,13 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { RouterProvider } from 'react-router-dom';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createCatalogData } from '../test/fixtures';
 import { createAppMemoryRouter, createAppRouter } from './router';
 
 const routeCases = [
   ['/', 'HIGHEST Kiosk'],
-  ['/shop', 'Shop placeholder'],
+  ['/shop', '내가 담은 굿즈'],
   ['/products/horizon-album', 'Product placeholder: horizon-album'],
   ['/checkout', 'Checkout placeholder'],
   ['/processing', 'Processing placeholder'],
@@ -20,6 +21,13 @@ const routeCases = [
 ] as const;
 
 describe('application router', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'kiosk', {
+      configurable: true,
+      value: { catalog: { read: vi.fn().mockResolvedValue(createCatalogData()) } },
+    });
+  });
+
   afterEach(() => {
     cleanup();
     window.history.replaceState(null, '', '/');
@@ -52,7 +60,7 @@ describe('application router', () => {
 
     render(<RouterProvider router={router} />);
 
-    expect(await screen.findByRole('heading', { name: 'Shop placeholder' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '내가 담은 굿즈' })).toBeInTheDocument();
     router.dispose();
   });
 });

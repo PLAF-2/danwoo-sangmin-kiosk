@@ -6,6 +6,8 @@ import {
   type RouteObject,
 } from 'react-router-dom';
 
+import { CatalogPage } from '../features/catalog/CatalogPage';
+
 interface PlaceholderRouteProps {
   heading: string;
   owner: string;
@@ -63,7 +65,7 @@ export const appRoutes: RouteObject[] = [
   },
   {
     path: '/shop',
-    element: <PlaceholderRoute heading="Shop placeholder" owner="Catalog & Cart thread" />,
+    element: <CatalogPage />,
   },
   { path: '/products/:productId', element: <ProductPlaceholder /> },
   {
