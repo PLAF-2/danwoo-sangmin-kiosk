@@ -22,6 +22,7 @@ export function CheckoutPage() {
   const [attempt, setAttempt] = useState(0);
   const [alert, setAlert] = useState('');
   const [priceReview, setPriceReview] = useState<ReturnType<typeof reviewCart> | null>(null);
+  const [paymentReview, setPaymentReview] = useState(false);
   const [pending, setPending] = useState(false);
   const locked = useRef(false);
   const leaving = useRef(false);
@@ -65,18 +66,27 @@ export function CheckoutPage() {
       ]);
       if (leaving.current) return;
       const review = reviewCart(currentItems, latestCatalog);
+      const paymentChanged = !payment || Object.entries(latestPayment).some(
+        ([key, value]) => payment[key as keyof PaymentSettings] !== value,
+      );
       setPayment(latestPayment);
+      setPaymentReview(paymentChanged);
       if (review.blockers.length > 0) {
         setPriceReview(null);
-        setAlert(review.blockers.join(' '));
+        setAlert(`${review.blockers.join(' ')}${paymentChanged ? ' 결제 안내가 변경되었습니다. 변경 내용을 확인해 주세요.' : ''}`);
         return;
       }
       setCatalog(latestCatalog);
-      if ((!priceReview && review.priceChanges.length > 0)
+      const priceChanged = (!priceReview && review.priceChanges.length > 0)
         || review.priceKey !== displayedReview?.priceKey
-        || review.total !== displayedReview?.total) {
-        setPriceReview(review);
-        setAlert('상품 가격이 변경되었습니다. 변경 금액을 확인해 주세요.');
+        || review.total !== displayedReview?.total;
+      if (priceChanged || paymentChanged) {
+        if (priceChanged) setPriceReview(review);
+        setAlert(priceChanged && paymentChanged
+          ? '상품 가격과 결제 안내가 변경되었습니다. 변경 내용을 확인해 주세요.'
+          : priceChanged
+            ? '상품 가격이 변경되었습니다. 변경 금액을 확인해 주세요.'
+            : '결제 안내가 변경되었습니다. 변경 내용을 확인해 주세요.');
         return;
       }
       navigate('/processing', { state: {
@@ -144,7 +154,9 @@ export function CheckoutPage() {
         <div className="checkout-actions">
           <button onClick={returnToShop} type="button">주문 수정하기</button>
           {payment && <button className="checkout-submit" disabled={loading || loadError || pending || items.length === 0} onClick={() => { void submit(); }} type="button">
-            {priceReview ? '변경 금액 확인하고 계속' : actionLabels[payment.mode]}
+            {priceReview && paymentReview ? '변경 내용 확인하고 계속'
+              : priceReview ? '변경 금액 확인하고 계속'
+                : paymentReview ? '변경된 결제 안내 확인하고 계속' : actionLabels[payment.mode]}
           </button>}
         </div>
       </section>

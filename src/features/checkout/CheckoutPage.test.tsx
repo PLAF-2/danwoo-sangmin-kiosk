@@ -132,6 +132,60 @@ describe('CheckoutPage', () => {
     expect(document.body.textContent).not.toContain('결제 완료');
   });
 
+  it('requires confirmation when payment mode changes before submission', async () => {
+    renderCheckout();
+    const button = await ready();
+    const bankPayment = createPaymentSettings({
+      mode: 'bankQr', bankName: '구름은행', accountNumber: '123-456', accountHolder: '하이스트',
+      qrImage: 'images/bank-qr.png', instructionText: 'QR을 스캔하고 입금해 주세요.',
+    });
+    paymentRead.mockResolvedValue(bankPayment);
+    fireEvent.click(button);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/결제 안내.*변경/);
+    expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
+    expect(screen.getByText('구름은행')).toBeInTheDocument();
+    expect(screen.getByText('123-456')).toBeInTheDocument();
+    expect(screen.getByText('하이스트')).toBeInTheDocument();
+    expect(screen.getByAltText('입금 QR 코드')).toHaveAttribute('src', 'kiosk-media://images/bank-qr.png');
+    expect(screen.getByText('QR을 스캔하고 입금해 주세요.')).toBeInTheDocument();
+    expect(screen.getByText(/운영자.*입금.*확인/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('결제 완료');
+    expect(crypto.randomUUID).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '변경된 결제 안내 확인하고 계속' }));
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
+    expect(JSON.parse(screen.getByTestId('request-state').textContent!)).toEqual({
+      items: [createCartItem({ quantity: 2 })], payment: bankPayment, requestId,
+    });
+    expect(useCartStore.getState().items['horizon-album']?.capturedUnitPrice).toBe(25_000);
+    expect(paymentRead).toHaveBeenCalledTimes(3);
+  });
+
+  it('requires another confirmation when bank account details change again', async () => {
+    const bank = createPaymentSettings({
+      mode: 'bankQr', bankName: '구름은행', accountNumber: '111', accountHolder: '하이스트', qrImage: 'images/bank-qr.png',
+    });
+    paymentRead.mockResolvedValue(bank);
+    renderCheckout();
+    const button = await screen.findByRole('button', { name: '입금했어요' });
+    const next = { ...bank, accountNumber: '222' };
+    paymentRead.mockResolvedValue(next);
+    fireEvent.click(button);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/결제 안내.*변경/);
+    expect(screen.getByText('222')).toBeInTheDocument();
+    const confirm = screen.getByRole('button', { name: '변경된 결제 안내 확인하고 계속' });
+    const changedAgain = { ...next, accountNumber: '333', instructionText: '새 계좌로 입금해 주세요.' };
+    paymentRead.mockResolvedValue(changedAgain);
+    fireEvent.click(confirm);
+    expect(await screen.findByText('333')).toBeInTheDocument();
+    expect(screen.getByText('새 계좌로 입금해 주세요.')).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
+    expect(crypto.randomUUID).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '변경된 결제 안내 확인하고 계속' }));
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
+    expect(JSON.parse(screen.getByTestId('request-state').textContent!)).toMatchObject({ payment: changedAgain });
+    expect(paymentRead).toHaveBeenCalledTimes(4);
+  });
+
   it.each([
     ['sold-out', createCatalogData({ products: [createProduct({ saleStatus: 'soldOut' })] })],
     ['hidden', createCatalogData({ products: [createProduct({ isVisible: false })] })],
@@ -150,7 +204,7 @@ describe('CheckoutPage', () => {
     expect(useCartStore.getState().itemCount()).toBe(2);
   });
 
-  it('requires an explicit second click for changed prices and sends the latest settings', async () => {
+  it('requires an explicit second click for changed prices and payment settings', async () => {
     renderCheckout();
     const button = await ready();
     const latestPayment = createPaymentSettings({ mode: 'simulation' });
@@ -161,7 +215,7 @@ describe('CheckoutPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
     expect(within(screen.getByTestId('checkout-items')).getByText('25,000원 → 30,000원')).toBeInTheDocument();
     expect(within(screen.getByTestId('checkout-fixed')).getAllByText('60,000원')).toHaveLength(2);
-    fireEvent.click(screen.getByRole('button', { name: '변경 금액 확인하고 계속' }));
+    fireEvent.click(screen.getByRole('button', { name: '변경 내용 확인하고 계속' }));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
     expect(JSON.parse(screen.getByTestId('request-state').textContent!)).toEqual({
       items: [createCartItem({ quantity: 2, capturedUnitPrice: 30_000 })], payment: latestPayment, requestId,
