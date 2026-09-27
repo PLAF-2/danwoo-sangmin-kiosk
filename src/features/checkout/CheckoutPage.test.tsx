@@ -1,0 +1,219 @@
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { useCartStore } from '../../domain/cart/cartStore';
+import type { CatalogData, PaymentSettings } from '../../domain/contracts';
+import { createCartItem, createCatalogData, createPaymentSettings, createProduct } from '../../test/fixtures';
+import { CheckoutPage } from './CheckoutPage';
+
+const catalogRead = vi.fn<() => Promise<CatalogData>>();
+const paymentRead = vi.fn<() => Promise<PaymentSettings>>();
+const requestId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+function renderCheckout() {
+  function LocationProbe() {
+    const location = useLocation();
+    return <><div data-testid="location">{location.pathname}</div><div data-testid="request-state">{JSON.stringify(location.state)}</div></>;
+  }
+  render(<MemoryRouter initialEntries={['/checkout']}><CheckoutPage /><LocationProbe /></MemoryRouter>);
+}
+
+async function ready() {
+  return screen.findByRole('button', { name: '결제하기' });
+}
+
+describe('CheckoutPage', () => {
+  beforeEach(() => {
+    useCartStore.getState().clear();
+    useCartStore.getState().add(createProduct(), 2);
+    catalogRead.mockReset().mockResolvedValue(createCatalogData());
+    paymentRead.mockReset().mockResolvedValue(createPaymentSettings());
+    Object.defineProperty(window, 'kiosk', { configurable: true, value: {
+      catalog: { read: catalogRead }, settings: { readPayment: paymentRead },
+    } });
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue(requestId);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('shows captured cart rows and totals in separate scrolling and fixed sections', async () => {
+    renderCheckout();
+    await ready();
+    expect(screen.getByRole('heading', { name: '주문 내용을 확인해 주세요' })).toBeInTheDocument();
+    const items = screen.getByTestId('checkout-items');
+    const fixed = screen.getByTestId('checkout-fixed');
+    expect(items).toHaveClass('checkout-items');
+    expect(fixed).toHaveClass('checkout-fixed');
+    expect(items.parentElement).toBe(fixed.parentElement);
+    expect(within(items).getByText('HORIZON Album')).toBeInTheDocument();
+    expect(within(items).getByText('수량 2개')).toBeInTheDocument();
+    expect(within(items).getByText('50,000원')).toBeInTheDocument();
+    expect(within(items).getByAltText('HORIZON Album')).toHaveAttribute('src', 'kiosk-media://images/horizon-album.png');
+    expect(within(fixed).getByText('상품 금액')).toBeInTheDocument();
+    expect(within(fixed).getByText('할인')).toBeInTheDocument();
+    expect(within(fixed).getByText('0원')).toBeInTheDocument();
+    expect(within(fixed).getAllByText('50,000원')).toHaveLength(2);
+    expect(within(fixed).getByRole('button', { name: '결제하기' })).toBeInTheDocument();
+  });
+
+  it('disables submission for an empty cart', async () => {
+    useCartStore.getState().clear();
+    renderCheckout();
+    expect(await ready()).toBeDisabled();
+    expect(screen.getByText('장바구니가 비어 있습니다.')).toBeInTheDocument();
+  });
+
+  it.each(['← 장바구니', '주문 수정하기'])('returns to the shop with %s without changing the cart', async (label) => {
+    const items = useCartStore.getState().items;
+    renderCheckout();
+    await ready();
+    fireEvent.click(screen.getByRole('button', { name: label }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/shop');
+    expect(useCartStore.getState().items).toBe(items);
+  });
+
+  it.each([
+    ['instant', '결제하기'], ['bankQr', '입금했어요'], ['simulation', '결제 시뮬레이션'],
+  ] as const)('uses the configured %s action', async (mode, label) => {
+    paymentRead.mockResolvedValue(createPaymentSettings({
+      mode, bankName: '구름은행', accountNumber: '123-456-789', accountHolder: '하이스트', qrImage: 'images/bank-qr.png',
+    }));
+    renderCheckout();
+    expect(await screen.findByRole('button', { name: label })).toBeEnabled();
+    for (const other of ['결제하기', '입금했어요', '결제 시뮬레이션'].filter((value) => value !== label)) {
+      expect(screen.queryByRole('button', { name: other })).not.toBeInTheDocument();
+    }
+  });
+
+  it('shows bank details, QR and explicit operator confirmation without claiming payment completion', async () => {
+    paymentRead.mockResolvedValue(createPaymentSettings({
+      mode: 'bankQr', bankName: '구름은행', accountNumber: '123-456-789', accountHolder: '하이스트',
+      qrImage: 'images/bank-qr.png', instructionText: 'QR을 스캔하고 입금해 주세요.',
+    }));
+    renderCheckout();
+    await screen.findByRole('button', { name: '입금했어요' });
+    for (const text of ['구름은행', '123-456-789', '하이스트', 'QR을 스캔하고 입금해 주세요.']) {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+    expect(screen.getByAltText('입금 QR 코드')).toHaveAttribute('src', 'kiosk-media://images/bank-qr.png');
+    expect(screen.getByText(/운영자.*입금.*확인/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('결제 완료');
+  });
+
+  it.each([
+    ['sold-out', createCatalogData({ products: [createProduct({ saleStatus: 'soldOut' })] })],
+    ['hidden', createCatalogData({ products: [createProduct({ isVisible: false })] })],
+    ['deleted', createCatalogData({ products: [] })],
+    ['above maximum', createCatalogData({ products: [createProduct({ maxQuantity: 1 })] })],
+  ])('blocks %s items using the current catalog and releases the submission lock', async (_, latestCatalog) => {
+    renderCheckout();
+    const button = await ready();
+    catalogRead.mockResolvedValueOnce(latestCatalog);
+    fireEvent.click(button);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/판매할 수 없습니다|최대 1개/);
+    expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
+    expect(useCartStore.getState().itemCount()).toBe(2);
+  });
+
+  it('requires an explicit second click for changed prices and sends the latest settings', async () => {
+    renderCheckout();
+    const button = await ready();
+    const latestPayment = createPaymentSettings({ mode: 'simulation' });
+    catalogRead.mockResolvedValue(createCatalogData({ products: [createProduct({ price: 30_000 })] }));
+    paymentRead.mockResolvedValue(latestPayment);
+    fireEvent.click(button);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/가격.*변경/);
+    expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
+    expect(within(screen.getByTestId('checkout-items')).getByText('25,000원 → 30,000원')).toBeInTheDocument();
+    expect(within(screen.getByTestId('checkout-fixed')).getAllByText('60,000원')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: '변경 금액 확인하고 계속' }));
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
+    expect(JSON.parse(screen.getByTestId('request-state').textContent!)).toEqual({
+      items: [createCartItem({ quantity: 2 })], payment: latestPayment, requestId,
+    });
+  });
+
+  it('requires confirmation again if the price changes after the first confirmation', async () => {
+    renderCheckout();
+    const button = await ready();
+    catalogRead.mockResolvedValueOnce(createCatalogData({ products: [createProduct({ price: 30_000 })] }));
+    fireEvent.click(button);
+    const confirm = await screen.findByRole('button', { name: '변경 금액 확인하고 계속' });
+    catalogRead.mockResolvedValue(createCatalogData({ products: [createProduct({ price: 35_000 })] }));
+    fireEvent.click(confirm);
+    await screen.findByText('25,000원 → 35,000원');
+    expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
+    fireEvent.click(confirm);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
+    expect(catalogRead).toHaveBeenCalledTimes(4);
+  });
+
+  it('locks synchronously so rapid clicks produce one reread and one request', async () => {
+    renderCheckout();
+    const button = await ready();
+    let resolveCatalog!: (catalog: CatalogData) => void;
+    catalogRead.mockImplementationOnce(() => new Promise((resolve) => { resolveCatalog = resolve; }));
+    act(() => {
+      fireEvent.click(button);
+      fireEvent.click(button);
+    });
+    expect(catalogRead).toHaveBeenCalledTimes(2);
+    expect(paymentRead).toHaveBeenCalledTimes(2);
+    await act(async () => resolveCatalog(createCatalogData()));
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
+    expect(crypto.randomUUID).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(screen.getByTestId('request-state').textContent!)).toEqual({
+      items: [createCartItem({ quantity: 2 })], payment: createPaymentSettings(), requestId,
+    });
+  });
+
+  it('keeps the customer in the shop if they go back while validation is pending', async () => {
+    renderCheckout();
+    const button = await ready();
+    let resolveCatalog!: (catalog: CatalogData) => void;
+    catalogRead.mockImplementationOnce(() => new Promise((resolve) => { resolveCatalog = resolve; }));
+    fireEvent.click(button);
+    fireEvent.click(screen.getByRole('button', { name: '← 장바구니' }));
+    await act(async () => resolveCatalog(createCatalogData()));
+    expect(screen.getByTestId('location')).toHaveTextContent('/shop');
+    expect(crypto.randomUUID).not.toHaveBeenCalled();
+    expect(useCartStore.getState().itemCount()).toBe(2);
+  });
+
+  it.each(['catalog', 'payment'])('shows a recoverable %s submission read error', async (source) => {
+    renderCheckout();
+    const button = await ready();
+    (source === 'catalog' ? catalogRead : paymentRead).mockRejectedValueOnce(new Error('읽기 실패'));
+    fireEvent.click(button);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/다시 시도/);
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
+  });
+
+  it('shows loading and lets the customer recover from initial loading errors', async () => {
+    catalogRead.mockRejectedValueOnce(new Error('읽기 실패'));
+    renderCheckout();
+    expect(screen.getByRole('status')).toHaveTextContent(/불러/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/불러/);
+    fireEvent.click(screen.getByRole('button', { name: '다시 불러오기' }));
+    expect(await ready()).toBeEnabled();
+    expect(catalogRead).toHaveBeenCalledTimes(2);
+    expect(paymentRead).toHaveBeenCalledTimes(2);
+  });
+
+  it('renders missing products safely and blocks them on submission', async () => {
+    catalogRead.mockResolvedValue(createCatalogData({ products: [] }));
+    renderCheckout();
+    fireEvent.click(await ready());
+    expect(await screen.findByRole('alert')).toHaveTextContent('horizon-album');
+    expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
+  });
+});
