@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.test.{ts,tsx}', 'electron/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'electron/**/*.test.ts', 'api/**/*.test.ts'],
     setupFiles: ['./src/test/setup.ts'],
   },
 });

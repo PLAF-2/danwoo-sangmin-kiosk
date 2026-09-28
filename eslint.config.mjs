@@ -11,6 +11,8 @@ export default tseslint.config(
   {
     files: [
       'electron/**/*.ts',
+      'api/**/*.ts',
+      'scripts/**/*.ts',
       '*.config.ts',
       'e2e/**/*.ts',
     ],
