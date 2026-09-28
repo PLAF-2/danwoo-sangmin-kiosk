@@ -130,6 +130,7 @@ export const orderSchema = z
     path: ['total'],
   });
 export type Order = z.infer<typeof orderSchema>;
+export const ORDER_REVIEW_REQUIRED = 'ORDER_REVIEW_REQUIRED';
 
 export const imagePositionSchema = z
   .object({

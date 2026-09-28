@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { access, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -38,11 +38,17 @@ async function setup(catalog = createCatalogData(), payment = createPaymentSetti
   return ipcMain;
 }
 
+async function expectNoRecord(ipcMain: Awaited<ReturnType<typeof setup>>) {
+  await expect(ipcMain.invoke('orders:read', 'ORDER-1')).resolves.toBeNull();
+  await expect(access(join(directories.at(-1)!, 'orders', '.requests', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.json')))
+    .rejects.toMatchObject({ code: 'ENOENT' });
+}
+
 describe('order IPC', () => {
   it('rejects a stale confirmed price before creating an order', async () => {
     const ipcMain = await setup(createCatalogData({ products: [createProduct({ price: 30_000 })] }));
-    await expect(ipcMain.invoke('orders:create', createOrderInput())).rejects.toThrow('Product price changed');
-    await expect(ipcMain.invoke('orders:read', 'ORDER-1')).resolves.toBeNull();
+    await expect(ipcMain.invoke('orders:create', createOrderInput())).rejects.toThrow('ORDER_REVIEW_REQUIRED');
+    await expectNoRecord(ipcMain);
   });
 
   it.each([
@@ -51,8 +57,8 @@ describe('order IPC', () => {
     ['account', createPaymentSettings({ mode: 'bankQr', bankName: 'Bank', accountNumber: '123', accountHolder: 'Holder', qrImage: 'images/qr.png' }), createPaymentSettings({ mode: 'bankQr', bankName: 'Bank', accountNumber: '456', accountHolder: 'Holder', qrImage: 'images/qr.png' })],
   ])('rejects changed expected payment %s before creating an order', async (_label, expectedPayment, currentPayment) => {
     const ipcMain = await setup(createCatalogData(), currentPayment);
-    await expect(ipcMain.invoke('orders:create', createOrderInput({ expectedPayment }))).rejects.toThrow('Payment settings changed');
-    await expect(ipcMain.invoke('orders:read', 'ORDER-1')).resolves.toBeNull();
+    await expect(ipcMain.invoke('orders:create', createOrderInput({ expectedPayment }))).rejects.toThrow('ORDER_REVIEW_REQUIRED');
+    await expectNoRecord(ipcMain);
   });
 
   it('persists matching confirmed values and deduplicates the same request', async () => {
@@ -97,8 +103,6 @@ describe('order IPC', () => {
 
   it.each([
     ['empty cart', createOrderInput({ items: [] })],
-    ['unknown product', createOrderInput({ items: [{ productId: 'missing', quantity: 1, capturedUnitPrice: 1 }] })],
-    ['too many', createOrderInput({ items: [{ productId: 'horizon-album', quantity: 6, capturedUnitPrice: 25000 }] })],
     ['renderer payment mode', { ...createOrderInput(), paymentMode: 'bankQr' }],
   ])('rejects %s', async (_label, input) => {
     const ipcMain = await setup();
@@ -106,11 +110,21 @@ describe('order IPC', () => {
   });
 
   it.each([
+    ['unknown product', createOrderInput({ items: [{ productId: 'missing', quantity: 1, capturedUnitPrice: 1 }] })],
+    ['too many', createOrderInput({ items: [{ productId: 'horizon-album', quantity: 6, capturedUnitPrice: 25000 }] })],
+  ])('marks %s as review required before creating a record', async (_label, input) => {
+    const ipcMain = await setup();
+    await expect(ipcMain.invoke('orders:create', input)).rejects.toThrow('ORDER_REVIEW_REQUIRED');
+    await expectNoRecord(ipcMain);
+  });
+
+  it.each([
     ['sold out', createProduct({ saleStatus: 'soldOut' })],
     ['hidden', createProduct({ isVisible: false })],
   ])('rejects a %s product', async (_label, product) => {
     const ipcMain = await setup(createCatalogData({ products: [product] }));
-    await expect(ipcMain.invoke('orders:create', createOrderInput())).rejects.toThrow();
+    await expect(ipcMain.invoke('orders:create', createOrderInput())).rejects.toThrow('ORDER_REVIEW_REQUIRED');
+    await expectNoRecord(ipcMain);
   });
 
   it('deduplicates concurrent and immediate identical duplicate-tap requests', async () => {

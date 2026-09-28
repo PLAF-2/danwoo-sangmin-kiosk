@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 
-import { cartItemSchema, paymentSettingsSchema, type CartItem, type PaymentSettings } from '../../domain/contracts';
+import { ORDER_REVIEW_REQUIRED, cartItemSchema, paymentSettingsSchema, type CartItem, type PaymentSettings } from '../../domain/contracts';
 
 import './checkout.css';
 
@@ -42,8 +42,13 @@ export function ProcessingPage() {
         } else {
           setFailure({ message: '다시 시도하거나 장바구니를 확인해 주세요.', confirmedFailed: order.status === 'failed' });
         }
-      } catch {
-        if (active) setFailure({
+      } catch (error) {
+        if (!active) return;
+        if (error instanceof Error && error.message.includes(ORDER_REVIEW_REQUIRED)) {
+          navigate('/checkout', { replace: true });
+          return;
+        }
+        setFailure({
           message: '주문을 저장하지 못했습니다. 다시 시도해 주세요.', confirmedFailed: false,
         });
       }
@@ -73,7 +78,7 @@ export function ProcessingPage() {
           <p className="checkout-alert" role="alert">{failure.message}</p>
           <div className="processing-actions">
             <button onClick={retry} type="button">다시 시도</button>
-            <button onClick={() => navigate('/shop')} type="button">장바구니로</button>
+            {failure.confirmedFailed && <button onClick={() => navigate('/shop')} type="button">장바구니로</button>}
           </div>
         </> : <p role="status">잠시만 기다려 주세요.</p>}
       </section>

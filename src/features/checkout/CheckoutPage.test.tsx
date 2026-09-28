@@ -80,6 +80,7 @@ describe('CheckoutPage', () => {
     expect(within(screen.getByTestId('checkout-items')).getByText('50,000원')).toBeInTheDocument();
     expect(within(screen.getByTestId('checkout-fixed')).getAllByText('50,000원')).toHaveLength(2);
     expect(screen.getByRole('alert')).toHaveTextContent(/가격.*변경/);
+    expect(screen.getByText('20,000원 → 25,000원')).toBeInTheDocument();
     expect(crypto.randomUUID).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '변경 금액 확인하고 계속' }));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
@@ -115,6 +116,20 @@ describe('CheckoutPage', () => {
     for (const other of ['결제하기', '입금했어요', '결제 시뮬레이션'].filter((value) => value !== label)) {
       expect(screen.queryByRole('button', { name: other })).not.toBeInTheDocument();
     }
+  });
+
+  it.each([
+    ['instant', '결제하기', 'simulation', '결제 시뮬레이션'],
+    ['simulation', '결제 시뮬레이션', 'instant', '즉시 완료'],
+  ] as const)('shows the new payment mode after a %s checkout changes', async (from, action, to, label) => {
+    paymentRead.mockResolvedValue(createPaymentSettings({ mode: from }));
+    renderCheckout();
+    const button = await screen.findByRole('button', { name: action });
+    paymentRead.mockResolvedValue(createPaymentSettings({ mode: to }));
+    fireEvent.click(button);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/결제 안내.*변경/);
+    expect(within(screen.getByTestId('checkout-fixed')).getByText(label)).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
   });
 
   it('shows bank details, QR and explicit operator confirmation without claiming payment completion', async () => {
@@ -231,7 +246,7 @@ describe('CheckoutPage', () => {
     const confirm = await screen.findByRole('button', { name: '변경 금액 확인하고 계속' });
     catalogRead.mockResolvedValue(createCatalogData({ products: [createProduct({ price: 35_000 })] }));
     fireEvent.click(confirm);
-    await screen.findByText('25,000원 → 35,000원');
+    await screen.findByText('30,000원 → 35,000원');
     expect(screen.getByTestId('location')).toHaveTextContent('/checkout');
     fireEvent.click(confirm);
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
@@ -249,6 +264,7 @@ describe('CheckoutPage', () => {
     expect(within(screen.getByTestId('checkout-items')).getByText('50,000원')).toBeInTheDocument();
     expect(within(screen.getByTestId('checkout-fixed')).getAllByText('50,000원')).toHaveLength(2);
     expect(screen.queryByText('25,000원 → 30,000원')).not.toBeInTheDocument();
+    expect(screen.getByText('30,000원 → 25,000원')).toBeInTheDocument();
     expect(confirm).toBeEnabled();
     expect(crypto.randomUUID).not.toHaveBeenCalled();
     fireEvent.click(confirm);

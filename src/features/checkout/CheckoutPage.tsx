@@ -10,6 +10,7 @@ import './checkout.css';
 
 const won = (amount: number) => `${amount.toLocaleString('ko-KR')}원`;
 const actionLabels = { instant: '결제하기', bankQr: '입금했어요', simulation: '결제 시뮬레이션' };
+const paymentModeLabels = { instant: '즉시 완료', bankQr: '계좌·QR 안내', simulation: '결제 시뮬레이션' };
 
 export function CheckoutPage() {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export function CheckoutPage() {
   const [attempt, setAttempt] = useState(0);
   const [alert, setAlert] = useState('');
   const [priceReview, setPriceReview] = useState<ReturnType<typeof reviewCart> | null>(null);
+  const [priceAnnotations, setPriceAnnotations] = useState<{ productId: string; before: number; after: number }[]>([]);
   const [paymentReview, setPaymentReview] = useState(false);
   const [pending, setPending] = useState(false);
   const locked = useRef(false);
@@ -73,6 +75,7 @@ export function CheckoutPage() {
       setPaymentReview(paymentChanged);
       if (review.blockers.length > 0) {
         setPriceReview(null);
+        setPriceAnnotations([]);
         setAlert(`${review.blockers.join(' ')}${paymentChanged ? ' 결제 안내가 변경되었습니다. 변경 내용을 확인해 주세요.' : ''}`);
         return;
       }
@@ -81,7 +84,15 @@ export function CheckoutPage() {
         || review.priceKey !== displayedReview?.priceKey
         || review.total !== displayedReview?.total;
       if (priceChanged || paymentChanged) {
-        if (priceChanged) setPriceReview(review);
+        if (priceChanged) {
+          setPriceReview(review);
+          setPriceAnnotations(review.lines.flatMap(({ item, product }) => {
+            const displayedPrice = displayedReview?.lines.find((line) => line.item.productId === item.productId)?.product.price;
+            const before = displayedPrice !== undefined && displayedPrice !== product.price
+              ? displayedPrice : item.capturedUnitPrice;
+            return before === product.price ? [] : [{ productId: item.productId, before, after: product.price }];
+          }));
+        }
         setAlert(priceChanged && paymentChanged
           ? '상품 가격과 결제 안내가 변경되었습니다. 변경 내용을 확인해 주세요.'
           : priceChanged
@@ -117,7 +128,7 @@ export function CheckoutPage() {
       <section aria-label="주문 상품" className="checkout-items" data-testid="checkout-items" tabIndex={0}>
         {loading ? <p role="status">주문 정보를 불러오는 중입니다.</p> : items.length === 0 ? <p>장바구니가 비어 있습니다.</p> : items.map((item) => {
           const product = catalog?.products.find(({ id }) => id === item.productId);
-          const change = priceReview?.priceChanges.find(({ productId }) => productId === item.productId);
+          const change = priceAnnotations.find(({ productId }) => productId === item.productId);
           return (
             <article className="checkout-line" key={item.productId}>
               {product ? <img alt={product.name} src={toKioskMediaUrl(product.thumbnailImage)} /> : <span className="checkout-thumbnail">상품 확인 필요</span>}
@@ -138,6 +149,7 @@ export function CheckoutPage() {
           <div className="checkout-total"><dt>최종 금액</dt><dd>{won(total)}</dd></div>
         </dl>
         {payment && !loading && !loadError && <div className="checkout-payment">
+          <strong>{paymentModeLabels[payment.mode]}</strong>
           {payment.mode === 'bankQr' && <div className="checkout-bank">
             <img alt="입금 QR 코드" src={toKioskMediaUrl(payment.qrImage)} />
             <dl>

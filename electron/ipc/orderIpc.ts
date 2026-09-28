@@ -4,6 +4,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 
 import {
+  ORDER_REVIEW_REQUIRED,
   orderSchema,
   paymentSettingsSchema,
   type Order,
@@ -95,20 +96,20 @@ export function registerOrderIpc({
 
       const [catalog, payment] = await Promise.all([catalogStore.read(), paymentStore.read()]);
       if (!isDeepStrictEqual(payment, input.expectedPayment)) {
-        throw new Error('Payment settings changed since confirmation');
+        throw new Error(`${ORDER_REVIEW_REQUIRED}: Payment settings changed since confirmation`);
       }
       const products = new Map(catalog.products.map((product) => [product.id, product]));
       const items = input.items.map(({ productId, quantity, capturedUnitPrice }) => {
         const product = products.get(productId);
-        if (!product) throw new Error(`Unknown product: ${productId}`);
+        if (!product) throw new Error(`${ORDER_REVIEW_REQUIRED}: Unknown product: ${productId}`);
         if (!product.isVisible || product.saleStatus !== 'onSale') {
-          throw new Error(`Product is not available: ${productId}`);
+          throw new Error(`${ORDER_REVIEW_REQUIRED}: Product is not available: ${productId}`);
         }
         if (quantity > product.maxQuantity) {
-          throw new Error(`Quantity exceeds current maximum for product: ${productId}`);
+          throw new Error(`${ORDER_REVIEW_REQUIRED}: Quantity exceeds current maximum for product: ${productId}`);
         }
         if (product.price !== capturedUnitPrice) {
-          throw new Error(`Product price changed since confirmation: ${productId}`);
+          throw new Error(`${ORDER_REVIEW_REQUIRED}: Product price changed since confirmation: ${productId}`);
         }
         return {
           productId,
