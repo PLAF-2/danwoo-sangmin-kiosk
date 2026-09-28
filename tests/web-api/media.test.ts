@@ -89,10 +89,14 @@ describe('admin media upload', () => {
     expect(put).not.toHaveBeenCalled();
   });
 
-  it('rejects a truncated PNG signature before storing it', async () => {
+  it.each([
+    ['PNG missing its final IEND bytes', png, 'image/png'],
+    ['JPEG missing its EOI marker', jpeg, 'image/jpeg'],
+    ['WebP shorter than its RIFF length', webp, 'image/webp'],
+  ])('rejects a %s before storing it', async (_name, bytes, type) => {
     const res = response();
-    await media(request(Buffer.from('89504e470d0a1a0a', 'hex')), res);
-    expect([415, 422]).toContain(res.statusCode);
+    await media(request(bytes.subarray(0, -2), type), res);
+    expect(res.statusCode).toBe(415);
     expect(put).not.toHaveBeenCalled();
   });
 

@@ -19,6 +19,14 @@ function hasImageSignature(bytes: Uint8Array, type: string): boolean {
     && Buffer.from(bytes.subarray(8, 12)).toString() === 'WEBP';
 }
 
+function hasCompleteImageContainer(bytes: Buffer, type: string): boolean {
+  if (type === 'image/png') {
+    return bytes.length >= 20 && bytes.subarray(-12).equals(Buffer.from('0000000049454e44ae426082', 'hex'));
+  }
+  if (type === 'image/jpeg') return bytes.length >= 2 && bytes[bytes.length - 2] === 0xff && bytes[bytes.length - 1] === 0xd9;
+  return type === 'image/webp' && bytes.length >= 12 && bytes.readUInt32LE(4) + 8 === bytes.length;
+}
+
 async function uploadedFile(request: ApiRequest): Promise<File> {
   const contentType = request.headers['content-type'];
   if (typeof contentType !== 'string' || !/^multipart\/form-data;\s*boundary=/iu.test(contentType)) {
@@ -55,12 +63,13 @@ export default endpoint('POST', async (request) => {
   await requireAdmin(request);
   const file = await uploadedFile(request);
   if (file.size > maxFileSize) throw new HttpError(413, 'File too large');
+  const bytes = Buffer.from(await file.arrayBuffer());
   const extension = extensions[file.type];
-  if (!extension || !hasImageSignature(new Uint8Array(await file.slice(0, 12).arrayBuffer()), file.type)) {
+  if (!extension || !hasImageSignature(bytes, file.type) || !hasCompleteImageContainer(bytes, file.type)) {
     throw new HttpError(415, 'Unsupported image');
   }
   try {
-    await sharp(Buffer.from(await file.arrayBuffer()), {
+    await sharp(bytes, {
       failOn: 'warning',
       limitInputPixels: 16_777_216,
     }).raw().toBuffer();
