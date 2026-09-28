@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { access, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -38,14 +38,55 @@ async function setup(catalog = createCatalogData(), payment = createPaymentSetti
   return ipcMain;
 }
 
+async function expectNoRecord(ipcMain: Awaited<ReturnType<typeof setup>>) {
+  await expect(ipcMain.invoke('orders:read', 'ORDER-1')).resolves.toBeNull();
+  await expect(access(join(directories.at(-1)!, 'orders', '.requests', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.json')))
+    .rejects.toMatchObject({ code: 'ENOENT' });
+}
+
 describe('order IPC', () => {
-  it('recalculates current prices, persists the order, and reads it back', async () => {
+  it('rejects a stale confirmed price before creating an order', async () => {
+    const ipcMain = await setup(createCatalogData({ products: [createProduct({ price: 30_000 })] }));
+    await expect(ipcMain.invoke('orders:create', createOrderInput())).rejects.toThrow('ORDER_REVIEW_REQUIRED');
+    await expectNoRecord(ipcMain);
+  });
+
+  it.each([
+    ['mode', createPaymentSettings(), createPaymentSettings({ mode: 'simulation' })],
+    ['result', createPaymentSettings({ mode: 'simulation' }), createPaymentSettings({ mode: 'simulation', simulationResult: 'failure' })],
+    ['account', createPaymentSettings({ mode: 'bankQr', bankName: 'Bank', accountNumber: '123', accountHolder: 'Holder', qrImage: 'images/qr.png' }), createPaymentSettings({ mode: 'bankQr', bankName: 'Bank', accountNumber: '456', accountHolder: 'Holder', qrImage: 'images/qr.png' })],
+  ])('rejects changed expected payment %s before creating an order', async (_label, expectedPayment, currentPayment) => {
+    const ipcMain = await setup(createCatalogData(), currentPayment);
+    await expect(ipcMain.invoke('orders:create', createOrderInput({ expectedPayment }))).rejects.toThrow('ORDER_REVIEW_REQUIRED');
+    await expectNoRecord(ipcMain);
+  });
+
+  it('persists matching confirmed values and deduplicates the same request', async () => {
+    const payment = createPaymentSettings({ mode: 'simulation', simulationResult: 'failure' });
+    const ipcMain = await setup(createCatalogData(), payment);
+    const input = createOrderInput({ expectedPayment: payment });
+    const first = await ipcMain.invoke('orders:create', input);
+    expect(first).toMatchObject({ orderNumber: 'ORDER-1', paymentMode: 'simulation', status: 'failed', subtotal: 25_000 });
+    await expect(ipcMain.invoke('orders:create', input)).resolves.toEqual(first);
+    await expect(ipcMain.invoke('orders:read', 'ORDER-1')).resolves.toEqual(first);
+  });
+
+  it('rejects the same request id with different expected payment', async () => {
+    const ipcMain = await setup();
+    const input = createOrderInput();
+    await ipcMain.invoke('orders:create', input);
+    await expect(ipcMain.invoke('orders:create', {
+      ...input, expectedPayment: createPaymentSettings({ instructionText: 'Changed instructions' }),
+    })).rejects.toThrow('requestId was already used with different order data');
+  });
+
+  it('persists matching current prices and reads the order back', async () => {
     const ipcMain = await setup();
 
     const order = await ipcMain.invoke(
       'orders:create',
       createOrderInput({
-        items: [{ productId: 'horizon-album', quantity: 2, capturedUnitPrice: 1 }],
+        items: [{ productId: 'horizon-album', quantity: 2, capturedUnitPrice: 25000 }],
       }),
     );
 
@@ -62,8 +103,6 @@ describe('order IPC', () => {
 
   it.each([
     ['empty cart', createOrderInput({ items: [] })],
-    ['unknown product', createOrderInput({ items: [{ productId: 'missing', quantity: 1, capturedUnitPrice: 1 }] })],
-    ['too many', createOrderInput({ items: [{ productId: 'horizon-album', quantity: 6, capturedUnitPrice: 25000 }] })],
     ['renderer payment mode', { ...createOrderInput(), paymentMode: 'bankQr' }],
   ])('rejects %s', async (_label, input) => {
     const ipcMain = await setup();
@@ -71,11 +110,21 @@ describe('order IPC', () => {
   });
 
   it.each([
+    ['unknown product', createOrderInput({ items: [{ productId: 'missing', quantity: 1, capturedUnitPrice: 1 }] })],
+    ['too many', createOrderInput({ items: [{ productId: 'horizon-album', quantity: 6, capturedUnitPrice: 25000 }] })],
+  ])('marks %s as review required before creating a record', async (_label, input) => {
+    const ipcMain = await setup();
+    await expect(ipcMain.invoke('orders:create', input)).rejects.toThrow('ORDER_REVIEW_REQUIRED');
+    await expectNoRecord(ipcMain);
+  });
+
+  it.each([
     ['sold out', createProduct({ saleStatus: 'soldOut' })],
     ['hidden', createProduct({ isVisible: false })],
   ])('rejects a %s product', async (_label, product) => {
     const ipcMain = await setup(createCatalogData({ products: [product] }));
-    await expect(ipcMain.invoke('orders:create', createOrderInput())).rejects.toThrow();
+    await expect(ipcMain.invoke('orders:create', createOrderInput())).rejects.toThrow('ORDER_REVIEW_REQUIRED');
+    await expectNoRecord(ipcMain);
   });
 
   it('deduplicates concurrent and immediate identical duplicate-tap requests', async () => {
@@ -134,32 +183,28 @@ describe('order IPC', () => {
     ['instant', 'paid'],
     ['simulation', 'paid'],
   ] as const)('derives %s payment mode and terminal status from active settings', async (mode, status) => {
-    const ipcMain = await setup(
-      createCatalogData(),
-      createPaymentSettings(
-        mode === 'bankQr'
-          ? {
-              mode,
-              bankName: 'Bank',
-              accountNumber: '123',
-              accountHolder: 'Holder',
-              qrImage: 'images/qr.png',
-            }
-          : { mode },
-      ),
+    const payment = createPaymentSettings(
+      mode === 'bankQr'
+        ? {
+            mode,
+            bankName: 'Bank',
+            accountNumber: '123',
+            accountHolder: 'Holder',
+            qrImage: 'images/qr.png',
+          }
+        : { mode },
     );
-    await expect(ipcMain.invoke('orders:create', createOrderInput())).resolves.toMatchObject({
+    const ipcMain = await setup(createCatalogData(), payment);
+    await expect(ipcMain.invoke('orders:create', createOrderInput({ expectedPayment: payment }))).resolves.toMatchObject({
       paymentMode: mode,
       status,
     });
   });
 
   it('persists simulation failure as failed and keeps same-id retries idempotent', async () => {
-    const ipcMain = await setup(
-      createCatalogData(),
-      createPaymentSettings({ mode: 'simulation', simulationResult: 'failure' }),
-    );
-    const input = createOrderInput();
+    const payment = createPaymentSettings({ mode: 'simulation', simulationResult: 'failure' });
+    const ipcMain = await setup(createCatalogData(), payment);
+    const input = createOrderInput({ expectedPayment: payment });
 
     const first = await ipcMain.invoke('orders:create', input);
     const duplicate = await ipcMain.invoke('orders:create', input);
@@ -169,14 +214,13 @@ describe('order IPC', () => {
   });
 
   it('allows a failed simulation retry only with a new request id', async () => {
-    const ipcMain = await setup(
-      createCatalogData(),
-      createPaymentSettings({ mode: 'simulation', simulationResult: 'failure' }),
-    );
+    const payment = createPaymentSettings({ mode: 'simulation', simulationResult: 'failure' });
+    const ipcMain = await setup(createCatalogData(), payment);
 
-    const first = await ipcMain.invoke('orders:create', createOrderInput());
+    const first = await ipcMain.invoke('orders:create', createOrderInput({ expectedPayment: payment }));
     const retry = await ipcMain.invoke('orders:create', createOrderInput({
       requestId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      expectedPayment: payment,
     }));
 
     expect(first).toMatchObject({ orderNumber: 'ORDER-1', status: 'failed' });

@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 
 import {
+  ORDER_REVIEW_REQUIRED,
   orderSchema,
   paymentSettingsSchema,
   type Order,
@@ -66,7 +68,7 @@ export function registerOrderIpc({
   ipcMain.handle(IPC_CHANNELS.ordersCreate, (event, ...args) => {
     security.authorizePublic(event);
     const [input] = z.tuple([createOrderInputSchema]).parse(args);
-    const fingerprint = JSON.stringify(input.items);
+    const fingerprint = JSON.stringify({ items: input.items, expectedPayment: input.expectedPayment });
     const pending = inFlight.get(input.requestId);
     if (pending) {
       if (pending.fingerprint !== fingerprint) {
@@ -93,15 +95,21 @@ export function registerOrderIpc({
       }
 
       const [catalog, payment] = await Promise.all([catalogStore.read(), paymentStore.read()]);
+      if (!isDeepStrictEqual(payment, input.expectedPayment)) {
+        throw new Error(`${ORDER_REVIEW_REQUIRED}: Payment settings changed since confirmation`);
+      }
       const products = new Map(catalog.products.map((product) => [product.id, product]));
-      const items = input.items.map(({ productId, quantity }) => {
+      const items = input.items.map(({ productId, quantity, capturedUnitPrice }) => {
         const product = products.get(productId);
-        if (!product) throw new Error(`Unknown product: ${productId}`);
+        if (!product) throw new Error(`${ORDER_REVIEW_REQUIRED}: Unknown product: ${productId}`);
         if (!product.isVisible || product.saleStatus !== 'onSale') {
-          throw new Error(`Product is not available: ${productId}`);
+          throw new Error(`${ORDER_REVIEW_REQUIRED}: Product is not available: ${productId}`);
         }
         if (quantity > product.maxQuantity) {
-          throw new Error(`Quantity exceeds current maximum for product: ${productId}`);
+          throw new Error(`${ORDER_REVIEW_REQUIRED}: Quantity exceeds current maximum for product: ${productId}`);
+        }
+        if (product.price !== capturedUnitPrice) {
+          throw new Error(`${ORDER_REVIEW_REQUIRED}: Product price changed since confirmation: ${productId}`);
         }
         return {
           productId,

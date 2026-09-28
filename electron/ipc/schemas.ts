@@ -43,6 +43,7 @@ export const createOrderInputSchema = z
   .object({
     requestId: z.uuid(),
     items: z.array(cartItemSchema).min(1),
+    expectedPayment: paymentSettingsSchema,
   })
   .strict()
   .refine(({ items }) => new Set(items.map(({ productId }) => productId)).size === items.length, {

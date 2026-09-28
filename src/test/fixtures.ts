@@ -49,6 +49,7 @@ export const createOrderInput = (
 ): CreateOrderInput => ({
   requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   items: [createCartItem()],
+  expectedPayment: createPaymentSettings(),
   ...overrides,
 });
 
