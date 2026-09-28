@@ -92,6 +92,11 @@ describe('protected admin writes', () => {
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(res.setHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('Max-Age=0'));
     expect(query.mock.calls.some(([sql]) => sql.includes('INSERT INTO admin_sessions'))).toBe(false);
+    expect(query.mock.calls[2]?.[0]).toContain('SELECT id FROM admin_credentials WHERE id = 1 FOR UPDATE');
+    expect(transaction).toHaveBeenCalledWith(
+      [query.mock.results[2]!.value, query.mock.results[3]!.value],
+      { isolationLevel: 'ReadCommitted' },
+    );
   });
 
   it('rejects an incorrect current password without changing credentials or sessions', async () => {

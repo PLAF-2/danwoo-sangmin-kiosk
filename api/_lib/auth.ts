@@ -40,13 +40,20 @@ export async function verifyPassword(password: string) {
 }
 
 export async function createSession(password: string): Promise<string> {
-  await verifyPassword(password);
+  const credential = await verifyPassword(password);
   const db = getDb();
   const token = randomUUID();
-  await db.query(
-    `INSERT INTO admin_sessions (token_hash, expires_at) VALUES ($1, now() + interval '5 minutes')`,
-    [hashToken(token)],
-  );
+  // Lock before the write so it sees any rotation that committed while waiting.
+  const [, sessions] = await db.transaction([
+    db.query('SELECT id FROM admin_credentials WHERE id = 1 FOR UPDATE'),
+    db.query(
+      `INSERT INTO admin_sessions (token_hash, expires_at)
+       SELECT $1, now() + interval '5 minutes' FROM admin_credentials
+       WHERE id = 1 AND salt = $2 AND hash = $3 RETURNING token_hash`,
+      [hashToken(token), credential.salt, credential.hash],
+    ),
+  ], { isolationLevel: 'ReadCommitted' });
+  if (!sessions?.length) throw new HttpError(401, 'Invalid password');
   return token;
 }
 

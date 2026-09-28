@@ -16,13 +16,14 @@ export default endpoint('POST', async (request, response) => {
   const salt = randomBytes(16);
   const hash = await derive(nextPassword, salt, 64) as Buffer;
   const db = getDb();
-  const [changed] = await db.transaction([
+  const [, changed] = await db.transaction([
+    db.query('SELECT id FROM admin_credentials WHERE id = 1 FOR UPDATE'),
     db.query(`WITH changed AS (
       UPDATE admin_credentials SET algorithm = 'scrypt', salt = $1, hash = $2 WHERE id = 1 AND hash = $3 RETURNING id
     ), revoked AS (
       DELETE FROM admin_sessions WHERE credential_id IN (SELECT id FROM changed)
     ) SELECT id FROM changed`, [salt.toString('hex'), hash.toString('hex'), current.hash]),
-  ]);
+  ], { isolationLevel: 'ReadCommitted' });
   if (!changed?.length) throw new HttpError(409, 'Password changed; sign in again');
   setSessionCookie(response, '', 0);
 });
