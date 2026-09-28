@@ -1,4 +1,5 @@
 import { randomBytes, scryptSync } from 'node:crypto';
+import type { NeonQueryPromise } from '@neondatabase/serverless';
 
 import catalog from '../../data/defaults/catalog.json';
 import payment from '../../data/defaults/payment.json';
@@ -13,12 +14,16 @@ const insertPayment = `INSERT INTO payment_settings (data) VALUES ($1::jsonb) ON
 const insertCredential = `INSERT INTO admin_credentials (salt, hash) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`;
 
 export async function seedDatabase(db: Database): Promise<void> {
-  const [state] = await db.query<{ has_data: boolean; has_credential: boolean }>(
-    `SELECT EXISTS (SELECT 1 FROM categories) AS has_data, EXISTS (SELECT 1 FROM admin_credentials) AS has_credential`,
-  );
+  const [state] = (await db.query(
+    `SELECT (
+      EXISTS (SELECT 1 FROM categories) OR EXISTS (SELECT 1 FROM products) OR
+      EXISTS (SELECT 1 FROM app_settings) OR EXISTS (SELECT 1 FROM payment_settings) OR
+      EXISTS (SELECT 1 FROM orders)
+    ) AS has_data, EXISTS (SELECT 1 FROM admin_credentials) AS has_credential`,
+  )) as Array<{ has_data: boolean; has_credential: boolean }>;
   if (!state) throw new Error('Unable to read database seed state');
 
-  const queries: Promise<unknown>[] = [];
+  const queries: NeonQueryPromise<false, false>[] = [];
   if (!state.has_data) {
     for (const category of catalog.categories) {
       queries.push(db.query(insertCategory, [category.id, category.name, category.isActive, category.displayOrder]));

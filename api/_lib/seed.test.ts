@@ -70,4 +70,11 @@ describe('seedDatabase', () => {
     expect(db.inserts.length).toBeGreaterThan(0);
     expect(db.inserts.some(({ text }) => text.includes('admin_credentials'))).toBe(false);
   });
+
+  it('does not restore defaults when another business record already exists', async () => {
+    const db = database(true, true);
+    await seedDatabase(db.client);
+    expect(db.inserts).toEqual([]);
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
 });
