@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom';
 
 import { CatalogPage } from '../features/catalog/CatalogPage';
+import { ProductDetailPage } from '../features/product-detail/ProductDetailPage';
 import { WelcomePage } from '../features/welcome/WelcomePage';
 
 interface PlaceholderRouteProps {
@@ -22,17 +23,6 @@ function PlaceholderRoute({ heading, owner }: PlaceholderRouteProps) {
       <h1 id="route-heading">{heading}</h1>
       <p>Future owner: {owner}</p>
     </main>
-  );
-}
-
-function ProductPlaceholder() {
-  const { productId } = useParams();
-
-  return (
-    <PlaceholderRoute
-      heading={`Product placeholder: ${productId ?? 'unknown'}`}
-      owner="Product Detail thread"
-    />
   );
 }
 
@@ -68,7 +58,7 @@ export const appRoutes: RouteObject[] = [
     path: '/shop',
     element: <CatalogPage />,
   },
-  { path: '/products/:productId', element: <ProductPlaceholder /> },
+  { path: '/products/:productId', element: <ProductDetailPage /> },
   {
     path: '/checkout',
     element: <PlaceholderRoute heading="Checkout placeholder" owner="Checkout & Payment thread" />,

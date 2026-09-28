@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useCartStore } from '../../domain/cart/cartStore';
 import type { CatalogData, Product } from '../../domain/contracts';
@@ -10,6 +10,11 @@ import './catalog.css';
 const allCategoryId = 'all';
 const won = (amount: number) => `${new Intl.NumberFormat('ko-KR').format(amount)}원`;
 
+export interface CatalogReturnState {
+  categoryId: string;
+  scrollTop: number;
+}
+
 function visibleProducts(catalog: CatalogData, categoryId: string) {
   const activeCategoryIds = new Set(catalog.categories.filter(({ isActive }) => isActive).map(({ id }) => id));
   return catalog.products
@@ -19,17 +24,16 @@ function visibleProducts(catalog: CatalogData, categoryId: string) {
     .sort((left, right) => left.displayOrder - right.displayOrder || left.name.localeCompare(right.name, 'ko'));
 }
 
-function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
-  const navigate = useNavigate();
+function ProductCard({ product, onAdd, onOpen }: { product: Product; onAdd: () => void; onOpen: () => void }) {
   const soldOut = product.saleStatus === 'soldOut';
 
   return (
     <article
       className="product-card"
       data-testid={`product-card-${product.id}`}
-      onClick={() => navigate(`/products/${product.id}`)}
+      onClick={onOpen}
       onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') navigate(`/products/${product.id}`);
+        if (event.key === 'Enter' || event.key === ' ') onOpen();
       }}
       role="button"
       tabIndex={0}
@@ -65,19 +69,31 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
 
 export function CatalogPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const catalogScrollRef = useRef<HTMLElement>(null);
+  const returnState = location.state as Partial<CatalogReturnState> | null;
   const [catalog, setCatalog] = useState<CatalogData | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState(allCategoryId);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(returnState?.categoryId ?? allCategoryId);
   const cart = useCartStore();
 
   useEffect(() => {
     let active = true;
-    void window.kiosk.catalog.read().then((nextCatalog) => {
+    const kiosk = window as unknown as { kiosk: { catalog: { read(): Promise<CatalogData> } } };
+    void kiosk.kiosk.catalog.read().then((nextCatalog) => {
       if (active) setCatalog(nextCatalog);
     });
     return () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const scrollTop = returnState?.scrollTop;
+    if (typeof scrollTop !== 'number') return;
+    requestAnimationFrame(() => {
+      if (catalogScrollRef.current) catalogScrollRef.current.scrollTop = scrollTop;
+    });
+  }, [returnState?.scrollTop]);
 
   const categories = useMemo(
     () => (catalog?.categories ?? []).filter(({ isActive }) => isActive).sort((left, right) => left.displayOrder - right.displayOrder),
@@ -124,9 +140,16 @@ export function CatalogPage() {
           <button aria-pressed={selectedCategoryId === category.id} key={category.id} onClick={() => setSelectedCategoryId(category.id)} type="button">{category.name}</button>
         ))}
       </nav>
-      <section className="catalog-scroll" data-testid="catalog-scroll" aria-label="상품 목록">
+      <section className="catalog-scroll" data-testid="catalog-scroll" aria-label="상품 목록" ref={catalogScrollRef}>
         <div className="product-grid">
-          {products.map((product) => <ProductCard key={product.id} onAdd={() => cart.add(product)} product={product} />)}
+          {products.map((product) => (
+            <ProductCard
+              key={product.id}
+              onAdd={() => cart.add(product)}
+              onOpen={() => navigate(`/products/${product.id}`, { state: { categoryId: selectedCategoryId, scrollTop: catalogScrollRef.current?.scrollTop ?? 0 } })}
+              product={product}
+            />
+          ))}
           {catalog && products.length === 0 && <p className="catalog-empty">표시할 상품이 없습니다.</p>}
         </div>
       </section>

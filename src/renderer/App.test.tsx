@@ -1,11 +1,19 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppRuntime } from '../app/bootstrap';
 import { createAppMemoryRouter } from '../app/router';
+import { createAppSettings } from '../test/fixtures';
 import { App } from './App';
 
 describe('App', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'kiosk', {
+      configurable: true,
+      value: { settings: { read: vi.fn().mockResolvedValue(createAppSettings()) } },
+    });
+  });
+
   afterEach(cleanup);
 
   it('uses one bootstrap-created router through StrictMode remounts', () => {
@@ -15,7 +23,7 @@ describe('App', () => {
 
     render(runtime.element);
 
-    expect(screen.getByRole('heading', { name: 'HIGHEST Kiosk' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '굿즈 사러가기' })).toBeInTheDocument();
     expect(routerFactory).toHaveBeenCalledTimes(1);
 
     router.dispose();
@@ -26,7 +34,7 @@ describe('App', () => {
 
     render(<App router={router} />);
 
-    expect(screen.getByRole('heading', { name: 'HIGHEST Kiosk' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '굿즈 사러가기' })).toBeInTheDocument();
     router.dispose();
   });
 });

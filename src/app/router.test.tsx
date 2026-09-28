@@ -2,13 +2,12 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createCatalogData } from '../test/fixtures';
+import { createAppSettings, createCatalogData } from '../test/fixtures';
 import { createAppMemoryRouter, createAppRouter } from './router';
 
 const routeCases = [
-  ['/', 'HIGHEST Kiosk'],
   ['/shop', '내가 담은 굿즈'],
-  ['/products/horizon-album', 'Product placeholder: horizon-album'],
+  ['/products/horizon-album', 'HORIZON Album'],
   ['/checkout', 'Checkout placeholder'],
   ['/processing', 'Processing placeholder'],
   ['/complete/HK-20260926-001', 'Order complete placeholder: HK-20260926-001'],
@@ -24,8 +23,20 @@ describe('application router', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'kiosk', {
       configurable: true,
-      value: { catalog: { read: vi.fn().mockResolvedValue(createCatalogData()) } },
+      value: {
+        catalog: { read: vi.fn().mockResolvedValue(createCatalogData()) },
+        settings: { read: vi.fn().mockResolvedValue(createAppSettings()) },
+      },
     });
+  });
+
+  it('renders the welcome shell at the root route', async () => {
+    const router = createAppMemoryRouter(['/']);
+
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByRole('button', { name: '굿즈 사러가기' })).toBeInTheDocument();
+    router.dispose();
   });
 
   afterEach(() => {
