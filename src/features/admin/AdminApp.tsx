@@ -18,7 +18,7 @@ const keepAliveIntervalMs = 30 * 1000;
 interface AdminSessionValue {
   authenticated: boolean;
   login(password: string): Promise<boolean>;
-  logout(): Promise<void>;
+  logout(destination?: string): Promise<void>;
 }
 
 const AdminSessionContext = createContext<AdminSessionValue | null>(null);
@@ -35,11 +35,11 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastKeepAlive = useRef(0);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (destination = '/admin/login') => {
     setAuthenticated(false);
     if (idleTimer.current) clearTimeout(idleTimer.current);
     await window.kiosk.admin.logout().catch(() => undefined);
-    navigate('/admin/login', { replace: true });
+    navigate(destination, { replace: true });
   }, [navigate]);
 
   const login = useCallback(async (password: string) => {
@@ -153,6 +153,7 @@ export function AdminShell() {
         <nav aria-label="관리자 메뉴">
           {navigation.map(([to, label]) => <NavLink key={to} to={to}>{label}</NavLink>)}
         </nav>
+        <button type="button" onClick={() => void logout('/')}>키오스크 처음 화면</button>
         <button type="button" onClick={() => void logout()}>로그아웃</button>
       </aside>
       <main><Outlet /></main>

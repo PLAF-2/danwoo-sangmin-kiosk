@@ -102,6 +102,21 @@ describe('admin authentication', () => {
     router.dispose();
   });
 
+  it('ends the administrator session and returns to the kiosk home screen', async () => {
+    authenticate.mockResolvedValue(true);
+    const router = createAppMemoryRouter(['/admin/login']);
+    render(<RouterProvider router={router} />);
+    fireEvent.change(await screen.findByLabelText('비밀번호'), { target: { value: 'correct-password' } });
+    fireEvent.click(screen.getByRole('button', { name: '로그인' }));
+    await screen.findByText('HORIZON Album');
+
+    fireEvent.click(screen.getByRole('button', { name: '키오스크 처음 화면' }));
+
+    await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole('button', { name: '굿즈 사러가기' })).toBeInTheDocument();
+    router.dispose();
+  });
+
   it('changes the password after confirmation and returns to login', async () => {
     authenticate.mockResolvedValue(true);
     const router = createAppMemoryRouter(['/admin/login']);
