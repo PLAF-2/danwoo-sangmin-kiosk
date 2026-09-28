@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { Readable } from 'node:stream';
+import sharp from 'sharp';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import media from '../../api/admin/media';
@@ -10,7 +11,12 @@ vi.mock('../../api/_lib/db', () => ({ getDb: () => ({ query }) }));
 vi.mock('@vercel/blob', () => ({ put }));
 
 const cookie = '__Host-kiosk-admin=824b1722-4a18-4d69-9b51-dccac58dc700';
-const png = Buffer.from('89504e470d0a1a0a00000000', 'hex');
+const image = sharp({ create: { width: 1, height: 1, channels: 3, background: '#000' } });
+const [png, jpeg, webp] = await Promise.all([
+  image.clone().png().toBuffer(),
+  image.clone().jpeg().toBuffer(),
+  image.clone().webp().toBuffer(),
+]);
 
 function request(bytes: Buffer, type = 'image/png', filename = 'caller-controlled.png', authenticated = true) {
   const boundary = 'test-boundary';
@@ -64,8 +70,8 @@ describe('admin media upload', () => {
   });
 
   it.each([
-    ['image/jpeg', Buffer.from('ffd8ff00', 'hex'), '.jpg'],
-    ['image/webp', Buffer.from('524946460000000057454250', 'hex'), '.webp'],
+    ['image/jpeg', jpeg, '.jpg'],
+    ['image/webp', webp, '.webp'],
   ])('accepts %s with its canonical extension', async (type, bytes, extension) => {
     const res = response();
     await media(request(bytes, type), res);
@@ -80,6 +86,13 @@ describe('admin media upload', () => {
     const res = response();
     await media(request(bytes, type), res);
     expect(res.statusCode).toBe(415);
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it('rejects a truncated PNG signature before storing it', async () => {
+    const res = response();
+    await media(request(Buffer.from('89504e470d0a1a0a', 'hex')), res);
+    expect([415, 422]).toContain(res.statusCode);
     expect(put).not.toHaveBeenCalled();
   });
 

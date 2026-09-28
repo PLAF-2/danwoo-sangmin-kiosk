@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { put } from '@vercel/blob';
+import sharp from 'sharp';
 
 import { requireAdmin } from '../_lib/auth';
 import { endpoint, HttpError, type ApiRequest } from '../_lib/http';
@@ -56,6 +57,14 @@ export default endpoint('POST', async (request) => {
   if (file.size > maxFileSize) throw new HttpError(413, 'File too large');
   const extension = extensions[file.type];
   if (!extension || !hasImageSignature(new Uint8Array(await file.slice(0, 12).arrayBuffer()), file.type)) {
+    throw new HttpError(415, 'Unsupported image');
+  }
+  try {
+    await sharp(Buffer.from(await file.arrayBuffer()), {
+      failOn: 'warning',
+      limitInputPixels: 16_777_216,
+    }).raw().toBuffer();
+  } catch {
     throw new HttpError(415, 'Unsupported image');
   }
   const token = process.env.BLOB_READ_WRITE_TOKEN;
