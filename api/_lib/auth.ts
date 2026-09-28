@@ -30,13 +30,18 @@ export function setSessionCookie(response: ApiResponse, token: string, maxAge = 
   response.setHeader('Set-Cookie', `${cookieName}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`);
 }
 
-export async function createSession(password: string): Promise<string> {
-  const db = getDb();
-  const [row] = await db.query('SELECT algorithm, salt, hash FROM admin_credentials WHERE id = 1');
+export async function verifyPassword(password: string) {
+  const [row] = await getDb().query('SELECT algorithm, salt, hash FROM admin_credentials WHERE id = 1');
   if (!row) throw new HttpError(401, 'Invalid password');
   const credential = credentialSchema.parse(row);
   const actual = await derive(password, Buffer.from(credential.salt, 'hex'), 64) as Buffer;
   if (!timingSafeEqual(actual, Buffer.from(credential.hash, 'hex'))) throw new HttpError(401, 'Invalid password');
+  return credential;
+}
+
+export async function createSession(password: string): Promise<string> {
+  await verifyPassword(password);
+  const db = getDb();
   const token = randomUUID();
   await db.query(
     `INSERT INTO admin_sessions (token_hash, expires_at) VALUES ($1, now() + interval '5 minutes')`,
