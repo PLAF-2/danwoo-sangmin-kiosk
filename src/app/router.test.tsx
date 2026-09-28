@@ -2,14 +2,14 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createAppSettings, createCatalogData, createPaymentSettings } from '../test/fixtures';
+import { createAppSettings, createCatalogData, createOrder, createPaymentSettings } from '../test/fixtures';
 import { createAppMemoryRouter, createAppRouter } from './router';
 
 const routeCases = [
   ['/shop', '내가 담은 굿즈'],
   ['/products/horizon-album', 'Product placeholder: horizon-album'],
   ['/checkout', '주문 내용을 확인해 주세요'],
-  ['/complete/HK-20260926-001', 'Order complete placeholder: HK-20260926-001'],
+  ['/complete/HK-20260926-001', '결제가 완료되었습니다'],
 ] as const;
 
 const protectedAdminRoutes = [
@@ -25,6 +25,7 @@ describe('application router', () => {
     Object.defineProperty(window, 'kiosk', {
       configurable: true,
       value: {
+        orders: { read: vi.fn().mockResolvedValue(createOrder({ orderNumber: 'HK-20260926-001' })) },
         catalog: { read: vi.fn().mockResolvedValue(createCatalogData()) },
         settings: {
           read: vi.fn().mockResolvedValue(createAppSettings()),

@@ -6,6 +6,8 @@ import {
   Outlet,
   type RouteObject,
 } from 'react-router-dom';
+import { CustomerSessionBoundary } from '../domain/session/CustomerSessionBoundary';
+import { CompletionPage } from '../features/completion/CompletionPage';
 import {
   AdminGuard,
   AdminLogin,
@@ -47,17 +49,6 @@ function ProductPlaceholder() {
   );
 }
 
-function CompletePlaceholder() {
-  const { orderNumber } = useParams();
-
-  return (
-    <PlaceholderRoute
-      heading={`Order complete placeholder: ${orderNumber ?? 'unknown'}`}
-      owner="Completion & Session thread"
-    />
-  );
-}
-
 function NotFoundPlaceholder() {
   return (
     <main aria-labelledby="not-found-heading">
@@ -73,22 +64,16 @@ function NotFoundPlaceholder() {
 export const appRoutes: RouteObject[] = [
   {
     path: '/',
-    element: <WelcomePage />,
+    element: <CustomerSessionBoundary />,
+    children: [
+      { index: true, element: <WelcomePage /> },
+      { path: 'shop', element: <CatalogPage /> },
+      { path: 'products/:productId', element: <ProductPlaceholder /> },
+      { path: 'checkout', element: <CheckoutPage /> },
+      { path: 'processing', element: <ProcessingPage /> },
+      { path: 'complete/:orderNumber', element: <CompletionPage /> },
+    ],
   },
-  {
-    path: '/shop',
-    element: <CatalogPage />,
-  },
-  { path: '/products/:productId', element: <ProductPlaceholder /> },
-  {
-    path: '/checkout',
-    element: <CheckoutPage />,
-  },
-  {
-    path: '/processing',
-    element: <ProcessingPage />,
-  },
-  { path: '/complete/:orderNumber', element: <CompletePlaceholder /> },
   {
     path: '/admin',
     element: <AdminSessionProvider><Outlet /></AdminSessionProvider>,
