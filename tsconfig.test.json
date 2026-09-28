@@ -10,6 +10,7 @@
     "src/test/**/*.ts",
     "src/global.d.ts",
     "electron/**/*.test.ts",
-    "api/**/*.test.ts"
+    "api/**/*.test.ts",
+    "tests/web-api/**/*.test.ts"
   ]
 }
