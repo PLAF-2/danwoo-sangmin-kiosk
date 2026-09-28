@@ -76,7 +76,7 @@ const backupSchema = z
       backup.settings.welcomeBackgroundImage,
       backup.payment.qrImage,
       ...backup.catalog.products.flatMap((product) => [product.thumbnailImage, ...product.detailImages]),
-    ].filter(Boolean);
+    ].filter((reference) => ownedImagePathSchema.safeParse(reference).success);
     for (const reference of references) {
       if (!imagePaths.has(reference.toLocaleLowerCase('en-US'))) {
         context.addIssue({ code: 'custom', path: ['images'], message: `missing image: ${reference}` });

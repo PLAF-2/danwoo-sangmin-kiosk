@@ -88,6 +88,33 @@ function registerAuthorizedBackup(
 }
 
 describe('backup IPC', () => {
+  it('round-trips hosted image references without archiving their files', async () => {
+    const paths = await setupPaths();
+    const url = 'https://example.public.blob.vercel-storage.com/products/album.png';
+    const catalog = createCatalogData();
+    catalog.products[0] = { ...catalog.products[0]!, thumbnailImage: url, detailImages: [url] };
+    const settings = createAppSettings({ welcomeBackgroundImage: url });
+    const payment = createPaymentSettings({ qrImage: url });
+    await createAtomicJsonStore({ filePath: paths.catalogFile, schema: catalogDataSchema }).write(catalog);
+    await createAtomicJsonStore({ filePath: paths.settingsFile, schema: appSettingsSchema }).write(settings);
+    await createAtomicJsonStore({ filePath: paths.paymentFile, schema: paymentSettingsSchema }).write(payment);
+
+    const backupFile = join(paths.userData, 'hosted.json');
+    const ipcMain = createTestIpcMain();
+    const event = registerAuthorizedBackup(ipcMain, paths, {
+      showSaveDialog: vi.fn().mockResolvedValue({ canceled: false, filePath: backupFile }),
+      showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: [backupFile] }),
+    });
+
+    await expect(ipcMain.invokeFrom(event, 'admin:export-backup')).resolves.toBe(backupFile);
+    const backup = JSON.parse(await readFile(backupFile, 'utf8')) as { images: Array<{ path: string }> };
+    expect(backup.images.map(({ path }) => path)).toEqual(['images/owned.png']);
+    await expect(ipcMain.invokeFrom(event, 'admin:import-backup')).resolves.toBeUndefined();
+    await expect(createAtomicJsonStore({ filePath: paths.catalogFile, schema: catalogDataSchema }).read()).resolves.toEqual(catalog);
+    await expect(createAtomicJsonStore({ filePath: paths.settingsFile, schema: appSettingsSchema }).read()).resolves.toEqual(settings);
+    await expect(createAtomicJsonStore({ filePath: paths.paymentFile, schema: paymentSettingsSchema }).read()).resolves.toEqual(payment);
+  });
+
   it('asks for confirmation after validation and cancellation leaves JSON and images untouched', async () => {
     const paths = await setupPaths();
     const importFile = join(paths.userData, 'cancelled-valid.json');

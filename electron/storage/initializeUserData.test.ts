@@ -74,6 +74,18 @@ describe('initializeUserData', () => {
     );
   });
 
+  it('copies nested default images through portable stored paths', async () => {
+    const userData = await makeTemporaryDirectory('highest-user-data-');
+    const defaultsDirectory = await makeTemporaryDirectory('highest-defaults-');
+    await copyFixtureDefaults(defaultsDirectory);
+    await mkdir(join(defaultsDirectory, 'images', 'products'));
+    await writeFile(join(defaultsDirectory, 'images', 'products', 'extra.svg'), '<svg/>');
+
+    const paths = await initializeUserData({ app: { getPath: () => userData }, defaultsDirectory });
+
+    await expect(readFile(join(paths.imagesDirectory, 'products', 'extra.svg'), 'utf8')).resolves.toBe('<svg/>');
+  });
+
   it('preserves user JSON and images when initialization runs again', async () => {
     const userData = await makeTemporaryDirectory('highest-user-data-');
     const defaultsDirectory = await makeTemporaryDirectory('highest-defaults-');

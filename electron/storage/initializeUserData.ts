@@ -313,7 +313,7 @@ async function preflightDestination(
     ...sourceImageFiles.map((sourceRelativePath) =>
       assertSafeDestinationPath(
         paths,
-        resolveImagePath(paths, join('images', sourceRelativePath)),
+        resolveImagePath(paths, `images/${sourceRelativePath.replaceAll('\\', '/')}`),
         'file',
       ),
     ),
@@ -359,7 +359,7 @@ async function copyMissingImages(
 ): Promise<void> {
   for (const sourceRelativePath of sourceImageFiles) {
     const sourcePath = join(sourceImagesDirectory, sourceRelativePath);
-    const targetPath = resolveImagePath(paths, join('images', sourceRelativePath));
+    const targetPath = resolveImagePath(paths, `images/${sourceRelativePath.replaceAll('\\', '/')}`);
     await assertRegularSourceFile(sourcePath, sourceImagesRealPath);
     await assertSafeDestinationPath(paths, targetPath, 'file');
     await copyFileIfAbsentAtomic({
