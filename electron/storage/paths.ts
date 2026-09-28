@@ -1,4 +1,5 @@
 import { isAbsolute, join, posix, relative, resolve, sep, win32 } from 'node:path';
+import { ownedImagePathSchema } from '../../src/domain';
 
 export interface ElectronPathProvider {
   getPath(name: 'userData'): string;
@@ -29,7 +30,7 @@ export function createUserDataPaths(app: ElectronPathProvider): UserDataPaths {
 }
 
 export function resolveImagePath(paths: UserDataPaths, storedPath: string): string {
-  if (storedPath.length === 0 || posix.isAbsolute(storedPath) || win32.isAbsolute(storedPath)) {
+  if (!ownedImagePathSchema.safeParse(storedPath).success || posix.isAbsolute(storedPath) || win32.isAbsolute(storedPath)) {
     throw new Error(`Unsafe image path: ${storedPath}`);
   }
 

@@ -25,7 +25,8 @@ export const ownedImagePathSchema = z.string().refine((value) => {
     ownedImageExtensions.test(value)
   );
 }, 'Unsafe image path');
-const optionalOwnedImagePathSchema = z.union([z.literal(''), ownedImagePathSchema]);
+export const imageReferenceSchema = z.union([ownedImagePathSchema, z.url({ protocol: /^https$/iu })]);
+const optionalImageReferenceSchema = z.union([z.literal(''), imageReferenceSchema]);
 
 export const paymentModeSchema = z.enum(['instant', 'bankQr', 'simulation']);
 export type PaymentMode = z.infer<typeof paymentModeSchema>;
@@ -57,8 +58,8 @@ export const productSchema = z
     name: nonEmptyString,
     price: money,
     categoryId: nonEmptyString,
-    thumbnailImage: ownedImagePathSchema,
-    detailImages: z.array(ownedImagePathSchema),
+    thumbnailImage: imageReferenceSchema,
+    detailImages: z.array(imageReferenceSchema),
     description: z.string(),
     specifications: z.array(productSpecificationSchema),
     saleStatus: saleStatusSchema,
@@ -88,7 +89,7 @@ export type CartItem = z.infer<typeof cartItemSchema>;
 export const orderItemSchema = cartItemSchema
   .extend({
     name: nonEmptyString,
-    thumbnailImage: ownedImagePathSchema,
+    thumbnailImage: imageReferenceSchema,
   })
   .strict();
 export type OrderItem = z.infer<typeof orderItemSchema>;
@@ -142,7 +143,7 @@ export type ImagePosition = z.infer<typeof imagePositionSchema>;
 
 export const appSettingsSchema = z
   .object({
-    welcomeBackgroundImage: optionalOwnedImagePathSchema,
+    welcomeBackgroundImage: optionalImageReferenceSchema,
     welcomeImagePosition: imagePositionSchema,
     welcomeImageScale: z.number().positive().max(5),
     welcomeLogoVisible: z.boolean(),
@@ -164,7 +165,7 @@ export const paymentSettingsSchema = z
     bankName: z.string(),
     accountNumber: z.string(),
     accountHolder: z.string(),
-    qrImage: optionalOwnedImagePathSchema,
+    qrImage: optionalImageReferenceSchema,
     instructionText: nonEmptyString,
     processingSeconds: z.number().int().min(1).max(5),
     simulationResult: z.enum(['success', 'failure']),

@@ -35,6 +35,7 @@ describe('user data paths', () => {
   });
 
   it.each([
+    'https://example.public.blob.vercel-storage.com/products/album.png',
     '../outside.svg',
     'images/../../outside.svg',
     'images\\..\\outside.svg',

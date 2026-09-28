@@ -5,12 +5,13 @@ import type {
   Order,
   PaymentSettings,
 } from '../domain';
-import { ownedImagePathSchema } from '../domain';
+import { imageReferenceSchema, ownedImagePathSchema } from '../domain';
 
 export function toKioskMediaUrl(storedPath: string): string {
   if (storedPath.length === 0) return '';
   const parsed = ownedImagePathSchema.safeParse(storedPath);
   if (!parsed.success) {
+    if (imageReferenceSchema.safeParse(storedPath).success) return storedPath;
     throw new Error(`Unsafe kiosk media path: ${storedPath}`);
   }
   const segments = parsed.data.split('/');

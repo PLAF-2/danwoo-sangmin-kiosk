@@ -10,6 +10,7 @@ import {
   appSettingsSchema,
   cartItemSchema,
   categorySchema,
+  imageReferenceSchema,
   orderSchema,
   ownedImagePathSchema,
   paymentSettingsSchema,
@@ -39,7 +40,6 @@ describe('catalog contracts', () => {
     'images/animated.gif',
     'images/C:/secret.png',
     'images/file.png?query=1',
-    'https://example.com/image.png',
     'images/CON.png',
     'images/products/aux.jpg',
     'images/LPT1/detail.png',
@@ -51,6 +51,17 @@ describe('catalog contracts', () => {
   it('accepts shipped internal SVG paths but not empty required product paths', () => {
     expect(ownedImagePathSchema.parse('images/horizon-album.svg')).toBe('images/horizon-album.svg');
     expect(() => productSchema.parse({ ...validProduct, thumbnailImage: '' })).toThrow();
+  });
+
+  it('accepts hosted HTTPS images in all image reference fields', () => {
+    const url = 'https://example.public.blob.vercel-storage.com/products/album.png';
+    expect(imageReferenceSchema.parse(url)).toBe(url);
+    expect(() => ownedImagePathSchema.parse(url)).toThrow();
+    expect(productSchema.parse({ ...validProduct, thumbnailImage: url, detailImages: [url] })).toBeTruthy();
+    expect(orderSchema.parse({ ...createOrder(), items: [{ ...createOrder().items[0], thumbnailImage: url }] })).toBeTruthy();
+    expect(appSettingsSchema.parse({ ...createAppSettings(), welcomeBackgroundImage: url })).toBeTruthy();
+    expect(paymentSettingsSchema.parse({ ...createPaymentSettings(), qrImage: url })).toBeTruthy();
+    expect(() => imageReferenceSchema.parse('http://example.com/image.png')).toThrow();
   });
 
   it('accepts valid categories and rejects unknown fields', () => {
