@@ -7,7 +7,7 @@ import { createAppMemoryRouter, createAppRouter } from './router';
 
 const routeCases = [
   ['/shop', '내가 담은 굿즈'],
-  ['/products/horizon-album', 'Product placeholder: horizon-album'],
+  ['/products/horizon-album', 'HORIZON Album'],
   ['/checkout', '주문 내용을 확인해 주세요'],
   ['/complete/HK-20260926-001', '결제가 완료되었습니다'],
 ] as const;
@@ -33,6 +33,15 @@ describe('application router', () => {
         },
       },
     });
+  });
+
+  it('renders the welcome shell at the root route', async () => {
+    const router = createAppMemoryRouter(['/']);
+
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByRole('button', { name: '굿즈 사러가기' })).toBeInTheDocument();
+    router.dispose();
   });
 
   afterEach(() => {

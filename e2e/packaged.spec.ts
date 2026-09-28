@@ -122,7 +122,7 @@ test('boots the packaged app and initializes displayable defaults', async () => 
       expect(page).toBeDefined();
       if (!page) throw new Error('Packaged app did not create a renderer page');
 
-      await expect(page.getByRole('heading', { name: 'HIGHEST Kiosk' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '굿즈 사러가기' })).toBeVisible();
 
       const catalog = JSON.parse(await readFile(path.join(userData, 'catalog.json'), 'utf8')) as {
         products: Array<{ thumbnailImage: string }>;

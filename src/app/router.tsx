@@ -2,7 +2,6 @@ import {
   Link,
   createHashRouter,
   createMemoryRouter,
-  useParams,
   Outlet,
   type RouteObject,
 } from 'react-router-dom';
@@ -20,34 +19,10 @@ import { CategoriesAdmin, PaymentAdmin, SystemAdmin, WelcomeAdmin } from '../fea
 import { CatalogPage } from '../features/catalog/CatalogPage';
 import { CheckoutPage } from '../features/checkout/CheckoutPage';
 import { ProcessingPage } from '../features/checkout/ProcessingPage';
+import { ProductDetailPage } from '../features/product-detail/ProductDetailPage';
 import { WelcomePage } from '../features/welcome/WelcomePage';
 
-interface PlaceholderRouteProps {
-  heading: string;
-  owner: string;
-}
-
 export type AppRouter = ReturnType<typeof createMemoryRouter>;
-
-function PlaceholderRoute({ heading, owner }: PlaceholderRouteProps) {
-  return (
-    <main aria-labelledby="route-heading">
-      <h1 id="route-heading">{heading}</h1>
-      <p>Future owner: {owner}</p>
-    </main>
-  );
-}
-
-function ProductPlaceholder() {
-  const { productId } = useParams();
-
-  return (
-    <PlaceholderRoute
-      heading={`Product placeholder: ${productId ?? 'unknown'}`}
-      owner="Product Detail thread"
-    />
-  );
-}
 
 function NotFoundPlaceholder() {
   return (
@@ -68,7 +43,7 @@ export const appRoutes: RouteObject[] = [
     children: [
       { index: true, element: <WelcomePage /> },
       { path: 'shop', element: <CatalogPage /> },
-      { path: 'products/:productId', element: <ProductPlaceholder /> },
+      { path: 'products/:productId', element: <ProductDetailPage /> },
       { path: 'checkout', element: <CheckoutPage /> },
       { path: 'processing', element: <ProcessingPage /> },
       { path: 'complete/:orderNumber', element: <CompletionPage /> },
