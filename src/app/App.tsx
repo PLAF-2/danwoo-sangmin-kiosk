@@ -3,8 +3,10 @@ import type { AppRouter } from './router';
 
 interface AppProps {
   router: AppRouter;
+  api?: KioskApi;
 }
 
-export function App({ router }: AppProps) {
-  return <AppProviders router={router} />;
+export function App({ router, api = window.kiosk }: AppProps) {
+  return <AppProviders api={api} router={router} />;
 }
+import type { KioskApi } from '../services/kioskApi';

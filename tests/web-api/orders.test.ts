@@ -20,6 +20,26 @@ function response() {
 beforeEach(() => { query.mockReset().mockResolvedValue([]); transaction.mockReset().mockResolvedValue([[], [{ request_fingerprint: fingerprint, order }]]); });
 
 describe('order creation', () => {
+  it('reads a persisted order snapshot for the completion screen', async () => {
+    query.mockResolvedValue([{ order }]);
+    const { res, result } = response();
+    await orders({ method: 'GET', headers: {}, url: '/api/orders?orderNumber=order-123' }, res);
+    expect(res.statusCode).toBe(200);
+    expect(result()).toEqual(order);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('order_items'), ['order-123']);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it('returns null for an unknown order and rejects missing order numbers', async () => {
+    const missing = response();
+    await orders({ method: 'GET', headers: {}, url: '/api/orders?orderNumber=missing' }, missing.res);
+    expect(missing.res.statusCode).toBe(200);
+    expect(missing.result()).toBeNull();
+    const invalid = response();
+    await orders({ method: 'GET', headers: {}, url: '/api/orders' }, invalid.res);
+    expect(invalid.res.statusCode).toBe(400);
+  });
+
   it('returns persisted server snapshots and totals without requiring an admin session', async () => {
     const { res, result } = response();
     await orders({ method: 'POST', headers: {}, body: input }, res);

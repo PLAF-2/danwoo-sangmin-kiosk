@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useKioskApi } from '../../app/providers';
 
 import { useCartStore } from '../../domain/cart/cartStore';
 import type { CatalogData, PaymentSettings } from '../../domain/contracts';
@@ -13,6 +14,7 @@ const actionLabels = { instant: '결제하기', bankQr: '입금했어요', simul
 const paymentModeLabels = { instant: '즉시 완료', bankQr: '계좌·QR 안내', simulation: '결제 시뮬레이션' };
 
 export function CheckoutPage() {
+  const api = useKioskApi();
   const navigate = useNavigate();
   const cartItems = useCartStore((cart) => cart.items);
   const items = Object.values(cartItems);
@@ -35,7 +37,7 @@ export function CheckoutPage() {
     leaving.current = false;
     setLoading(true);
     setLoadError(false);
-    void Promise.all([window.kiosk.catalog.read(), window.kiosk.settings.readPayment()])
+    void Promise.all([api.catalog.read(), api.settings.readPayment()])
       .then(([nextCatalog, nextPayment]) => {
         if (!active) return;
         setCatalog(nextCatalog);
@@ -48,7 +50,7 @@ export function CheckoutPage() {
         if (active) setLoading(false);
       });
     return () => { active = false; leaving.current = true; };
-  }, [attempt]);
+  }, [api, attempt]);
 
   function returnToShop() {
     leaving.current = true;
@@ -64,7 +66,7 @@ export function CheckoutPage() {
     try {
       const currentItems = Object.values(useCartStore.getState().items);
       const [latestCatalog, latestPayment] = await Promise.all([
-        window.kiosk.catalog.read(), window.kiosk.settings.readPayment(),
+        api.catalog.read(), api.settings.readPayment(),
       ]);
       if (leaving.current) return;
       const review = reviewCart(currentItems, latestCatalog);

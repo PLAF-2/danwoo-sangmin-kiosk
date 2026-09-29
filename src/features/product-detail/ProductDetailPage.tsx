@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useKioskApi } from '../../app/providers';
 
 import { useCartStore } from '../../domain/cart/cartStore';
 import type { CatalogData, Product } from '../../domain/contracts';
@@ -46,6 +47,7 @@ function StateMessage({ heading, detail }: { heading: string; detail: string }) 
 }
 
 export function ProductDetailPage() {
+  const api = useKioskApi();
   const { productId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -57,12 +59,11 @@ export function ProductDetailPage() {
 
   useEffect(() => {
     let active = true;
-    const kiosk = window as unknown as { kiosk: { catalog: { read(): Promise<CatalogData> } } };
-    void kiosk.kiosk.catalog.read().then((nextCatalog) => {
+    void api.catalog.read().then((nextCatalog) => {
       if (active) setCatalog(nextCatalog);
     });
     return () => { active = false; };
-  }, []);
+  }, [api]);
 
   const result = useMemo(
     () => (catalog ? resolveProduct(catalog, productId) : null),

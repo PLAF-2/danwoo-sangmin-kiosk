@@ -46,6 +46,7 @@ export interface KioskApi {
     savePayment(input: PaymentSettings): Promise<void>;
   };
   media: {
+    upload?(file: File): Promise<string>;
     selectImage(kind: 'square' | 'welcome'): Promise<MediaSelection | null>;
     saveSquareCrop(input: SquareCropInput): Promise<string>;
     importSquareImage(): Promise<string | null>;
@@ -57,6 +58,7 @@ export interface KioskApi {
     read(orderNumber: string): Promise<Order | null>;
   };
   admin: {
+    supportsBackup?: boolean;
     authenticate(password: string): Promise<boolean>;
     keepAlive(): Promise<void>;
     logout(): Promise<void>;

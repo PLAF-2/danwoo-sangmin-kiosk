@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useKioskApi } from '../../app/providers';
 
 import './admin.css';
 
@@ -30,6 +31,7 @@ export function useAdminSession(): AdminSessionValue {
 }
 
 export function AdminSessionProvider({ children }: { children: ReactNode }) {
+  const api = useKioskApi();
   const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -38,16 +40,16 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async (destination = '/admin/login') => {
     setAuthenticated(false);
     if (idleTimer.current) clearTimeout(idleTimer.current);
-    await window.kiosk.admin.logout().catch(() => undefined);
+    await api.admin.logout().catch(() => undefined);
     navigate(destination, { replace: true });
-  }, [navigate]);
+  }, [api, navigate]);
 
   const login = useCallback(async (password: string) => {
-    const accepted = await window.kiosk.admin.authenticate(password);
+    const accepted = await api.admin.authenticate(password);
     setAuthenticated(accepted);
     if (accepted) lastKeepAlive.current = Date.now();
     return accepted;
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     if (!authenticated) return;
@@ -61,7 +63,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       const now = Date.now();
       if (now - lastKeepAlive.current < keepAliveIntervalMs) return;
       lastKeepAlive.current = now;
-      void window.kiosk.admin.keepAlive().catch(() => void logout());
+      void api.admin.keepAlive().catch(() => void logout());
     };
 
     armTimer();
@@ -74,7 +76,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('keydown', recordActivity);
       window.removeEventListener('touchstart', recordActivity);
     };
-  }, [authenticated, logout]);
+  }, [api, authenticated, logout]);
 
   return (
     <AdminSessionContext.Provider value={{ authenticated, login, logout }}>

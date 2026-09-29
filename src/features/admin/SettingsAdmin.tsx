@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useKioskApi } from '../../app/providers';
 
 import type { AppSettings, CatalogData, PaymentSettings } from '../../domain';
 import { toKioskMediaUrl } from '../../services/kioskApi';
@@ -10,14 +11,15 @@ function Feedback({ message, error }: { message: string; error: string }) {
 }
 
 export function CategoriesAdmin() {
+  const api = useKioskApi();
   const [catalog, setCatalog] = useState<CatalogData | null>(null);
   const [newId, setNewId] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    void window.kiosk.catalog.read().then(setCatalog).catch((cause) => setError(String(cause)));
-  }, []);
+    void api.catalog.read().then(setCatalog).catch((cause) => setError(String(cause)));
+  }, [api]);
 
   const add = () => {
     if (!catalog) return;
@@ -33,7 +35,7 @@ export function CategoriesAdmin() {
     if (!catalog) return;
     setError('');
     try {
-      await window.kiosk.catalog.save(catalog);
+      await api.catalog.save(catalog);
       setMessage('카테고리를 저장했습니다.');
       setNewId('');
     } catch (cause) {
@@ -74,21 +76,27 @@ export function CategoriesAdmin() {
 }
 
 export function WelcomeAdmin() {
+  const api = useKioskApi();
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    void window.kiosk.settings.read().then(setSettings).catch((cause) => setError(String(cause)));
-  }, []);
+    void api.settings.read().then(setSettings).catch((cause) => setError(String(cause)));
+  }, [api]);
 
-  const upload = async () => {
+  const upload = async (file?: File) => {
     if (!settings) return;
+    setError('');
+    setUploading(true);
     try {
-      const path = await window.kiosk.media.importWelcomeImage();
-      if (path) setSettings({ ...settings, welcomeBackgroundImage: path });
+      const path = file && api.media.upload ? await api.media.upload(file) : await api.media.importWelcomeImage();
+      if (path) setSettings((current) => current && ({ ...current, welcomeBackgroundImage: path }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '이미지를 가져오지 못했습니다.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -97,7 +105,7 @@ export function WelcomeAdmin() {
     if (!settings) return;
     setError('');
     try {
-      await window.kiosk.settings.save(settings);
+      await api.settings.save(settings);
       setMessage('웰컴 화면 설정을 저장했습니다.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '저장하지 못했습니다.');
@@ -127,7 +135,17 @@ export function WelcomeAdmin() {
         </div>
         <form className="admin-settings-form" onSubmit={(event) => void save(event)}>
           <div className="admin-actions">
-            <button type="button" onClick={() => void upload()}>배경 이미지 업로드</button>
+            {api.media.upload ? <label>배경 이미지 업로드<input
+              accept="image/png,image/jpeg,image/webp"
+              disabled={uploading}
+              type="file"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) void upload(file);
+                event.currentTarget.value = '';
+              }}
+            /></label> : <button disabled={uploading} type="button" onClick={() => void upload()}>배경 이미지 업로드</button>}
+            {uploading && <p role="status">이미지 업로드 중…</p>}
             <button
               type="button"
               onClick={() => {
@@ -142,7 +160,7 @@ export function WelcomeAdmin() {
           <label>확대 배율<input max="5" min="1" step="0.1" type="range" value={settings.welcomeImageScale} onChange={(e) => setSettings({ ...settings, welcomeImageScale: Number(e.target.value) })} /></label>
           <label><input aria-label="로고 표시" checked={settings.welcomeLogoVisible} type="checkbox" onChange={(e) => setSettings({ ...settings, welcomeLogoVisible: e.target.checked })} /> 로고 표시</label>
           <label>안내 문구<textarea value={settings.welcomeMessage} onChange={(e) => setSettings({ ...settings, welcomeMessage: e.target.value })} /></label>
-          <button type="submit">웰컴 설정 저장</button>
+          <button disabled={uploading} type="submit">웰컴 설정 저장</button>
         </form>
       </div>
     </section>
@@ -150,20 +168,21 @@ export function WelcomeAdmin() {
 }
 
 export function PaymentAdmin() {
+  const api = useKioskApi();
   const [settings, setSettings] = useState<PaymentSettings | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    void window.kiosk.settings.readPayment().then(setSettings).catch((cause) => setError(String(cause)));
-  }, []);
+    void api.settings.readPayment().then(setSettings).catch((cause) => setError(String(cause)));
+  }, [api]);
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (!settings) return;
     setError('');
     try {
-      await window.kiosk.settings.savePayment(settings);
+      await api.settings.savePayment(settings);
       setMessage('결제 설정을 저장했습니다.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '저장하지 못했습니다.');
@@ -195,6 +214,7 @@ export function PaymentAdmin() {
 }
 
 export function SystemAdmin() {
+  const api = useKioskApi();
   const { logout } = useAdminSession();
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
@@ -210,7 +230,7 @@ export function SystemAdmin() {
       return;
     }
     try {
-      await window.kiosk.admin.changePassword(currentPassword, nextPassword);
+      await api.admin.changePassword(currentPassword, nextPassword);
       await logout();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '비밀번호를 변경하지 못했습니다.');
@@ -220,7 +240,7 @@ export function SystemAdmin() {
   const exportBackup = async () => {
     setError('');
     try {
-      const path = await window.kiosk.admin.exportBackup();
+      const path = await api.admin.exportBackup();
       if (path) setMessage('백업을 저장했습니다.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '백업을 저장하지 못했습니다.');
@@ -231,7 +251,7 @@ export function SystemAdmin() {
     if (!window.confirm('검증된 백업으로 현재 상품·설정·미디어를 교체할까요?')) return;
     setError('');
     try {
-      await window.kiosk.admin.importBackup();
+      await api.admin.importBackup();
       setMessage('백업을 가져왔습니다. 고객 화면을 다시 열면 반영됩니다.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '백업을 가져오지 못했습니다.');
@@ -250,14 +270,14 @@ export function SystemAdmin() {
           <label>새 비밀번호 확인<input autoComplete="new-password" minLength={8} required type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} /></label>
           <button type="submit">비밀번호 변경</button>
         </form>
-        <div className="admin-panel">
+        {api.admin.supportsBackup !== false && <div className="admin-panel">
           <h2>콘텐츠 백업</h2>
           <p>카탈로그, 화면·결제 설정과 관리용 미디어를 하나의 검증 가능한 파일로 관리합니다.</p>
           <div className="admin-actions">
             <button type="button" onClick={() => void exportBackup()}>백업 내보내기</button>
             <button className="danger" type="button" onClick={() => void importBackup()}>백업 가져오기</button>
           </div>
-        </div>
+        </div>}
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useKioskApi } from '../../app/providers';
 
 import { useCartStore } from '../../domain/cart/cartStore';
 import type { Order } from '../../domain/contracts';
@@ -12,6 +13,7 @@ const paymentLabels = { instant: '즉시 완료', bankQr: '계좌·QR 안내', s
 const won = (amount: number) => `${amount.toLocaleString('ko-KR')}원`;
 
 export function CompletionPage() {
+  const api = useKioskApi();
   const { orderNumber = '' } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null | undefined>(undefined);
@@ -22,13 +24,13 @@ export function CompletionPage() {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([window.kiosk.orders.read(orderNumber), window.kiosk.settings.read(), window.kiosk.settings.readPayment()]).then(([nextOrder, settings, payment]) => {
+    void Promise.all([api.orders.read(orderNumber), api.settings.read(), api.settings.readPayment()]).then(([nextOrder, settings, payment]) => {
       if (!active) return;
       setOrder(nextOrder); setDuration(settings.completionResetSeconds); setSeconds(settings.completionResetSeconds); setPickupMessage(payment.pickupMessage);
       if (nextOrder && useSessionStore.getState().completeOrder(nextOrder.orderNumber)) useCartStore.getState().clear();
     }).catch(() => { if (active) setOrder(null); });
     return () => { active = false; };
-  }, [orderNumber]);
+  }, [api, orderNumber]);
   useEffect(() => {
     if (!order) return;
     const timer = window.setInterval(() => setSeconds((value) => value - 1), 1000);

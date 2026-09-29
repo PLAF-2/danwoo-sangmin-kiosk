@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useKioskApi } from '../../app/providers';
 
 import type { AppSettings } from '../../domain';
-import { toKioskMediaUrl, type KioskApi } from '../../services/kioskApi';
+import { toKioskMediaUrl } from '../../services/kioskApi';
 
 import styles from './WelcomePage.module.css';
 
@@ -25,14 +26,14 @@ const defaultSettings: Pick<
 const adminHoldDurationMs = 800;
 
 export function WelcomePage() {
+  const api = useKioskApi();
   const [settings, setSettings] = useState(defaultSettings);
   const holdTimer = useRef<number | undefined>(undefined);
   const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
-    const kiosk = window as unknown as Window & { kiosk: KioskApi };
-    void kiosk.kiosk.settings
+    void api.settings
       .read()
       .then((next) => {
         if (active) setSettings(next);
@@ -41,7 +42,7 @@ export function WelcomePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [api]);
 
   const cancelAdminHold = () => {
     if (holdTimer.current !== undefined) {

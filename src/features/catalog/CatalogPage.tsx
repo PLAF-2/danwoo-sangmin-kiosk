@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useKioskApi } from '../../app/providers';
 
 import { useCartStore } from '../../domain/cart/cartStore';
 import type { CatalogData, Product } from '../../domain/contracts';
@@ -68,6 +69,7 @@ function ProductCard({ product, onAdd, onOpen }: { product: Product; onAdd: () =
 }
 
 export function CatalogPage() {
+  const api = useKioskApi();
   const navigate = useNavigate();
   const location = useLocation();
   const catalogScrollRef = useRef<HTMLElement>(null);
@@ -78,14 +80,13 @@ export function CatalogPage() {
 
   useEffect(() => {
     let active = true;
-    const kiosk = window as unknown as { kiosk: { catalog: { read(): Promise<CatalogData> } } };
-    void kiosk.kiosk.catalog.read().then((nextCatalog) => {
+    void api.catalog.read().then((nextCatalog) => {
       if (active) setCatalog(nextCatalog);
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     const scrollTop = returnState?.scrollTop;

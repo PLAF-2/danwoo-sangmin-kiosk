@@ -3,7 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppSettings, createCatalogData, createOrder, createPaymentSettings } from '../test/fixtures';
-import { createAppMemoryRouter, createAppRouter } from './router';
+import { createAppMemoryRouter, createAppRouter, createWebAppRouter } from './router';
 
 const routeCases = [
   ['/shop', '내가 담은 굿즈'],
@@ -108,6 +108,15 @@ describe('application router', () => {
     render(<RouterProvider router={router} />);
 
     expect(await screen.findByRole('heading', { name: '내가 담은 굿즈' })).toBeInTheDocument();
+    router.dispose();
+  });
+
+  it('loads a direct browser URL after a web page reload', async () => {
+    window.history.replaceState(null, '', '/admin/login');
+    const router = createWebAppRouter();
+    render(<RouterProvider router={router} />);
+    expect(await screen.findByRole('heading', { name: '관리자 로그인' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/admin/login');
     router.dispose();
   });
 });

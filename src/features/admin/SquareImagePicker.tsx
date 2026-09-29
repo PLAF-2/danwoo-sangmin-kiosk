@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useKioskApi } from '../../app/providers';
 
 import type { MediaSelection } from '../../services/kioskApi';
 
@@ -9,14 +10,25 @@ export function SquareImagePicker({
   buttonLabel: string;
   onSaved(path: string): void;
 }) {
+  const api = useKioskApi();
   const [selection, setSelection] = useState<MediaSelection | null>(null);
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  const upload = async (file: File) => {
+    if (!api.media.upload) return;
+    setError('');
+    setUploading(true);
+    try { onSaved(await api.media.upload(file)); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : '이미지를 저장하지 못했습니다.'); }
+    finally { setUploading(false); }
+  };
 
   const choose = async () => {
     setError('');
     try {
-      const selected = await window.kiosk.media.selectImage('square');
+      const selected = await api.media.selectImage('square');
       if (!selected) return;
       setSelection(selected);
       setOffset(Math.floor(Math.abs(selected.width - selected.height) / 2));
@@ -29,7 +41,7 @@ export function SquareImagePicker({
     if (!selection) return;
     const size = Math.min(selection.width, selection.height);
     try {
-      const path = await window.kiosk.media.saveSquareCrop({
+      const path = await api.media.saveSquareCrop({
         selectionId: selection.selectionId,
         x: selection.width > selection.height ? offset : 0,
         y: selection.height > selection.width ? offset : 0,
@@ -45,7 +57,17 @@ export function SquareImagePicker({
 
   return (
     <>
-      <button type="button" onClick={() => void choose()}>{buttonLabel}</button>
+      {api.media.upload ? <label>{buttonLabel}<input
+        accept="image/png,image/jpeg,image/webp"
+        disabled={uploading}
+        type="file"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) void upload(file);
+          event.currentTarget.value = '';
+        }}
+      /></label> : <button type="button" onClick={() => void choose()}>{buttonLabel}</button>}
+      {uploading && <p role="status">이미지 업로드 중…</p>}
       {error && <p role="alert">{error}</p>}
       {selection && (
         <div aria-label="1:1 이미지 자르기" aria-modal="true" className="admin-modal" role="dialog">

@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useKioskApi } from '../../app/providers';
 
 import { resetCustomerSession } from './resetCustomerSession';
 
 export function CustomerSessionBoundary() {
+  const api = useKioskApi();
   const location = useLocation();
   const navigate = useNavigate();
   const [settings, setSettings] = useState({ idleTimeoutSeconds: 90, idleWarningSeconds: 15 });
   const [warning, setWarning] = useState(false);
   const paused = location.pathname === '/processing' || location.pathname.startsWith('/admin');
 
-  useEffect(() => { void window.kiosk.settings.read().then(({ idleTimeoutSeconds, idleWarningSeconds }) => setSettings({ idleTimeoutSeconds, idleWarningSeconds })).catch(() => {}); }, []);
+  useEffect(() => { void api.settings.read().then(({ idleTimeoutSeconds, idleWarningSeconds }) => setSettings({ idleTimeoutSeconds, idleWarningSeconds })).catch(() => {}); }, [api]);
   useEffect(() => {
     if (paused) { setWarning(false); return; }
     let warningTimer = 0;

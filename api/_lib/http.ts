@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { z } from 'zod';
 
-export type ApiRequest = Pick<IncomingMessage, 'method' | 'headers'> & { body?: unknown };
+export type ApiRequest = Pick<IncomingMessage, 'method' | 'headers' | 'url'> & { body?: unknown };
 export type ApiResponse = Pick<ServerResponse, 'statusCode' | 'setHeader' | 'end'>;
 
 export class HttpError extends Error {
@@ -27,7 +27,7 @@ export function endpoint(method: string, handle: (request: ApiRequest, response:
       }
       const result = await handle(request, response);
       response.statusCode = 200;
-      response.end(JSON.stringify(result ?? { ok: true }));
+      response.end(JSON.stringify(result === undefined ? { ok: true } : result));
     } catch (error) {
       response.statusCode = error instanceof HttpError ? error.status : 500;
       response.end(JSON.stringify({ error: error instanceof HttpError ? error.message : 'Internal server error' }));

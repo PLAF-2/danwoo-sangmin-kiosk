@@ -3,9 +3,26 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createOrderInputSchema } from '../electron/ipc/schemas';
 import { ORDER_REVIEW_REQUIRED, orderSchema } from '../src/domain/contracts';
 import { getDb } from './_lib/db';
-import { endpoint, HttpError, parseBody } from './_lib/http';
+import { endpoint, HttpError, parseBody, type ApiRequest, type ApiResponse } from './_lib/http';
 
-export default endpoint('POST', async (request) => {
+const readOrder = endpoint('GET', async (request) => {
+  const params = new URL(request.url ?? '/', 'http://localhost').searchParams;
+  const orderNumber = params.get('orderNumber');
+  if (!orderNumber?.trim() || orderNumber.length > 128 || params.getAll('orderNumber').length !== 1) {
+    throw new HttpError(400, 'Invalid order number');
+  }
+  const [row] = await getDb().query(`SELECT jsonb_build_object(
+    'orderNumber', o.order_number, 'subtotal', o.subtotal, 'discount', o.discount, 'total', o.total,
+    'paymentMode', o.payment_mode, 'status', o.status, 'createdAt', o.created_at,
+    'items', (SELECT jsonb_agg(jsonb_build_object(
+      'productId', i.product_id, 'name', i.name, 'thumbnailImage', i.thumbnail_image,
+      'quantity', i.quantity, 'capturedUnitPrice', i.captured_unit_price
+    ) ORDER BY i.display_order) FROM order_items i WHERE i.order_number = o.order_number)
+  ) AS "order" FROM orders o WHERE o.order_number = $1`, [orderNumber]);
+  return row ? orderSchema.parse(row.order) : null;
+});
+
+const createOrder = endpoint('POST', async (request) => {
   const input = parseBody(request, createOrderInputSchema);
   const fingerprint = createHash('sha256').update(JSON.stringify({ items: input.items, expectedPayment: input.expectedPayment })).digest('hex');
   const db = getDb();
@@ -49,3 +66,7 @@ export default endpoint('POST', async (request) => {
   if (row.request_fingerprint !== fingerprint) throw new HttpError(409, 'requestId was already used with different order data');
   return orderSchema.parse(row.order);
 });
+
+export default function orders(request: ApiRequest, response: ApiResponse): Promise<void> {
+  return request.method === 'GET' ? readOrder(request, response) : createOrder(request, response);
+}

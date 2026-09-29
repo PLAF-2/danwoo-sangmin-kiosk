@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useKioskApi } from '../../app/providers';
 
 import type { CatalogData, Product, ProductSpecification } from '../../domain';
 import { SquareImagePicker } from './SquareImagePicker';
@@ -16,16 +17,17 @@ const textToSpecifications = (value: string): ProductSpecification[] =>
     .map(([label, itemValue]) => ({ label, value: itemValue }));
 
 export function ProductAdmin() {
+  const api = useKioskApi();
   const [catalog, setCatalog] = useState<CatalogData | null>(null);
   const [draft, setDraft] = useState<ProductDraft | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    void window.kiosk.catalog.read().then(setCatalog).catch((cause) => {
+    void api.catalog.read().then(setCatalog).catch((cause) => {
       setError(cause instanceof Error ? cause.message : '상품을 불러오지 못했습니다.');
     });
-  }, []);
+  }, [api]);
 
   const activeCategories = useMemo(
     () => catalog?.categories.filter(({ isActive }) => isActive) ?? [],
@@ -36,7 +38,7 @@ export function ProductAdmin() {
     setError('');
     setMessage('');
     try {
-      await window.kiosk.catalog.save(next);
+      await api.catalog.save(next);
       setCatalog(next);
       setMessage(success);
       return true;

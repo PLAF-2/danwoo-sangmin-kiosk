@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
+import { useKioskApi } from '../../app/providers';
 
 import { ORDER_REVIEW_REQUIRED, cartItemSchema, paymentSettingsSchema, type CartItem, type PaymentSettings } from '../../domain/contracts';
 
@@ -19,6 +20,7 @@ const processingStateSchema = z.object({
 });
 
 export function ProcessingPage() {
+  const api = useKioskApi();
   const navigate = useNavigate();
   const location = useLocation();
   const state = useMemo(() => {
@@ -35,7 +37,7 @@ export function ProcessingPage() {
     let active = true;
     const timer = window.setTimeout(async () => {
       try {
-        const order = await window.kiosk.orders.create({ requestId: state.requestId, items: state.items, expectedPayment: state.payment });
+        const order = await api.orders.create({ requestId: state.requestId, items: state.items, expectedPayment: state.payment });
         if (!active) return;
         if (order.status === 'paid' || order.status === 'received') {
           navigate(`/complete/${encodeURIComponent(order.orderNumber)}`, { replace: true });
@@ -54,7 +56,7 @@ export function ProcessingPage() {
       }
     }, state.payment.processingSeconds * 1000);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [navigate, state]);
+  }, [api, navigate, state]);
 
   if (!state) return null;
   const bankQr = state.payment.mode === 'bankQr';
