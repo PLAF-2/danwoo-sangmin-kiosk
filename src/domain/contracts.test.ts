@@ -140,6 +140,7 @@ describe('settings contracts', () => {
       appSettingsSchema.parse({ ...validAppSettings, welcomeBackgroundImage: '../outside.png' }),
     ).toThrow();
     expect(appSettingsSchema.parse({ ...validAppSettings, welcomeBackgroundImage: '' })).toBeTruthy();
+    expect(appSettingsSchema.parse({ ...validAppSettings, welcomeMessage: '' })).toBeTruthy();
   });
 
   it.each([0, 6, 1.5])('rejects processingSeconds=%s', (processingSeconds) => {

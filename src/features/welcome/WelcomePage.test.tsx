@@ -111,6 +111,21 @@ describe('WelcomePage', () => {
     router.dispose();
   });
 
+  it('opens admin from the hidden corner control when the logo is hidden', async () => {
+    const router = renderWelcome(createAppSettings({ welcomeLogoVisible: false, welcomeMessage: '관리자 진입 테스트' }));
+    await screen.findByText('관리자 진입 테스트');
+    vi.useFakeTimers();
+    const hotspot = screen.getByRole('button', { name: '관리자 진입' });
+
+    fireEvent.pointerDown(hotspot);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
+
+    expect(navigate).toHaveBeenCalledWith('/admin/login');
+    router.dispose();
+  });
+
   it('ignores a short press on the logo', async () => {
     const router = renderWelcome();
     const logo = screen.getByRole('button', { name: 'HIGHEST 관리자 진입' });

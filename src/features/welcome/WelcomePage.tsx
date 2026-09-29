@@ -98,6 +98,16 @@ export function WelcomePage() {
           굿즈 사러가기
         </button>
       </div>
+      <button
+        aria-label="관리자 진입"
+        className={styles.adminHotspot}
+        tabIndex={-1}
+        type="button"
+        onPointerCancel={cancelAdminHold}
+        onPointerDown={startAdminHold}
+        onPointerLeave={cancelAdminHold}
+        onPointerUp={cancelAdminHold}
+      />
     </main>
   );
 }

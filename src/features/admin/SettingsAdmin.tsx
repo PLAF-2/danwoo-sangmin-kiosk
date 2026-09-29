@@ -106,7 +106,7 @@ export function WelcomeAdmin() {
     setError('');
     const parsed = appSettingsSchema.safeParse(settings);
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.path[0] === 'welcomeMessage' ? '안내 문구를 입력해 주세요.' : '입력 값을 확인해 주세요.');
+      setError('입력 값을 확인해 주세요.');
       return;
     }
     try {

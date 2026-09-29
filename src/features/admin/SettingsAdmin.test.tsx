@@ -103,14 +103,13 @@ describe('welcome administration', () => {
     });
   });
 
-  it('does not submit a welcome setting with an empty message', async () => {
+  it('saves a welcome setting with an empty message', async () => {
     render(<WelcomeAdmin />);
 
     fireEvent.change(await screen.findByLabelText('안내 문구'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: '웰컴 설정 저장' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('안내 문구를 입력해 주세요.');
-    expect(settingsSave).not.toHaveBeenCalled();
+    await waitFor(() => expect(settingsSave).toHaveBeenCalledWith(expect.objectContaining({ welcomeMessage: '' })));
   });
 });
 

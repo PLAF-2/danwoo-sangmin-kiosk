@@ -147,7 +147,7 @@ export const appSettingsSchema = z
     welcomeImagePosition: imagePositionSchema,
     welcomeImageScale: z.number().positive().max(5),
     welcomeLogoVisible: z.boolean(),
-    welcomeMessage: nonEmptyString,
+    welcomeMessage: z.string(),
     idleTimeoutSeconds: z.number().int().min(1),
     idleWarningSeconds: z.number().int().min(1),
     completionResetSeconds: z.number().int().min(1),
