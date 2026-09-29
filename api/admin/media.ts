@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import { requireAdmin } from '../_lib/auth';
 import { endpoint, HttpError, type ApiRequest } from '../_lib/http';
 
-const maxFileSize = 512 * 1024;
+const maxFileSize = 4 * 1024 * 1024;
 const extensions: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',

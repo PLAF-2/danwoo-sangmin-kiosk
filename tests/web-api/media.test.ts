@@ -17,6 +17,9 @@ const [png, jpeg, webp] = await Promise.all([
   image.clone().jpeg().toBuffer(),
   image.clone().webp().toBuffer(),
 ]);
+const largePng = await sharp(Buffer.alloc(3 * 1024 * 1024), {
+  raw: { width: 1024, height: 1024, channels: 3 },
+}).png({ compressionLevel: 0 }).toBuffer();
 
 function request(bytes: Buffer, type = 'image/png', filename = 'caller-controlled.png', authenticated = true) {
   const boundary = 'test-boundary';
@@ -100,9 +103,16 @@ describe('admin media upload', () => {
     expect(put).not.toHaveBeenCalled();
   });
 
-  it('rejects files larger than 512 KiB', async () => {
+  it('accepts ordinary photos up to 4 MiB', async () => {
     const res = response();
-    await media(request(Buffer.concat([png, Buffer.alloc(512 * 1024)])), res);
+    await media(request(largePng), res);
+    expect(res.statusCode).toBe(200);
+    expect(put).toHaveBeenCalledOnce();
+  });
+
+  it('rejects files larger than 4 MiB', async () => {
+    const res = response();
+    await media(request(Buffer.concat([png, Buffer.alloc(4 * 1024 * 1024)])), res);
     expect(res.statusCode).toBe(413);
     expect(put).not.toHaveBeenCalled();
   });
