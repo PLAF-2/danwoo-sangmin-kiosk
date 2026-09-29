@@ -27,5 +27,5 @@ export function CustomerSessionBoundary() {
     return () => { window.clearTimeout(warningTimer); window.clearTimeout(resetTimer); window.removeEventListener('pointerdown', restart); window.removeEventListener('keydown', restart); };
   }, [navigate, paused, settings]);
 
-  return <><Outlet />{warning && <div aria-label="유휴 시간 경고" className="idle-warning" role="dialog"><p>{settings.idleWarningSeconds}초 후 처음 화면으로 이동합니다.</p><button onClick={() => window.dispatchEvent(new Event('pointerdown'))} type="button">계속 이용하기</button></div>}</>;
+  return <div className="kiosk-frame"><Outlet />{warning && <div aria-label="유휴 시간 경고" className="idle-warning" role="dialog"><p>{settings.idleWarningSeconds}초 후 처음 화면으로 이동합니다.</p><button onClick={() => window.dispatchEvent(new Event('pointerdown'))} type="button">계속 이용하기</button></div>}</div>;
 }

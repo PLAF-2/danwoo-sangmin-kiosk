@@ -44,6 +44,21 @@ describe('application router', () => {
     router.dispose();
   });
 
+  it('uses the presentation frame for customer screens but not admin screens', async () => {
+    const customerRouter = createAppMemoryRouter(['/']);
+    render(<RouterProvider router={customerRouter} />);
+    await screen.findByRole('button', { name: '굿즈 사러가기' });
+    expect(document.querySelector('.kiosk-frame')).not.toBeNull();
+    customerRouter.dispose();
+    cleanup();
+
+    const adminRouter = createAppMemoryRouter(['/admin/login']);
+    render(<RouterProvider router={adminRouter} />);
+    expect(await screen.findByRole('heading', { name: '관리자 로그인' })).toBeInTheDocument();
+    expect(document.querySelector('.kiosk-frame')).toBeNull();
+    adminRouter.dispose();
+  });
+
   afterEach(() => {
     cleanup();
     window.history.replaceState(null, '', '/');

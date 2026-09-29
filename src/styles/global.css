@@ -61,6 +61,16 @@ button,
   outline-offset: 3px;
 }
 
+@media (min-aspect-ratio: 1 / 1) {
+  .kiosk-frame {
+    width: min(100vw, calc(100dvh * 9 / 16));
+    min-height: 100dvh;
+    margin: 0 auto;
+    overflow-y: auto;
+    box-shadow: 0 0 2rem rgb(12 34 62 / 20%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
