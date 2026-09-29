@@ -12,12 +12,14 @@
   },
   "scripts": {
     "start": "electron-forge start",
+    "dev:web": "vite --config vite.web.config.ts",
     "build:web": "vite build --config vite.web.config.ts",
     "seed:web": "tsx scripts/seed-web.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.main.json && tsc --noEmit -p tsconfig.renderer.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.e2e.json && tsc --noEmit -p tsconfig.api.json",
     "test": "vitest run",
     "test:e2e": "electron-forge package && playwright test",
+    "test:web-e2e": "playwright test --config playwright.web.config.ts",
     "make": "electron-forge make"
   },
   "dependencies": {

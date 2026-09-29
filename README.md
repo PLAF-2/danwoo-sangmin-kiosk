@@ -1,6 +1,6 @@
 # HIGHEST Kiosk
 
-HIGHEST 굿즈 판매용 Electron 키오스크의 공통 기반입니다. 현재 저장소에는 안전한 로컬 저장소, typed IPC, 장바구니·세션 상태, 라우팅, 테스트 기반이 구현되어 있습니다. 고객·관리자 화면은 후속 개발 스레드가 구현하며, 현재 라우트는 의도적으로 placeholder를 표시합니다.
+HIGHEST 굿즈 판매용 Electron 키오스크와 Vercel 웹 앱입니다. 고객 주문·관리자 화면은 같은 React UI를 사용하며, Electron은 로컬 파일/IPC, 웹은 Neon Postgres·Vercel Blob/API로 데이터를 저장합니다.
 
 ## 개발 환경
 
@@ -24,10 +24,14 @@ npm start
 | 명령 | 동작 |
 |---|---|
 | `npm start` | Electron Forge/Vite 개발 서버와 Electron 앱 실행 |
+| `npm run dev:web` | 웹 UI용 Vite 개발 서버 실행(API 서버는 별도 필요) |
+| `npm run build:web` | Vercel용 웹 정적 파일을 `dist/`에 빌드 |
+| `npm run seed:web` | `DATABASE_URL`이 지정된 DB에 기본 데이터·초기 관리자 설치 |
 | `npm run lint` | 전체 저장소 ESLint 검사 |
-| `npm run typecheck` | main, renderer, unit test, E2E TypeScript 설정을 차례로 검사 |
+| `npm run typecheck` | main, renderer, unit test, E2E, API TypeScript 설정을 차례로 검사 |
 | `npm test` | Vitest 단위·컴포넌트 테스트를 1회 실행 |
-| `npm run test:e2e` | 먼저 `electron-forge package`로 현재 OS/CPU용 앱을 `out/`에 패키징한 뒤 Playwright 테스트 전체 실행 |
+| `npm run test:e2e` | 먼저 `electron-forge package`로 현재 OS/CPU용 앱을 `out/`에 패키징한 뒤 데스크톱·기존 renderer E2E 실행 |
+| `npm run test:web-e2e` | 별도 웹 런타임의 영속성 검사(주소·비밀번호 미지정 시 skip) |
 | `npm run make` | Electron Forge maker로 현재 OS/CPU용 배포 산출물 생성 |
 
 `npm run test:e2e`는 renderer를 Vite 서버에서 확인하고, 개발 Electron의 preload 경계를 확인하고, 새 임시 사용자 데이터 폴더로 패키징 앱이 부팅되어 기본 데이터와 미디어를 설치하는지 확인합니다. 브라우저 실행 파일이 없다는 오류가 나면 한 번 `npx playwright install chromium`을 실행하십시오.
@@ -39,6 +43,72 @@ npm exec electron-forge package
 ```
 
 이 명령은 설치 프로그램이나 ZIP을 만들지 않고 실행 가능한 앱 디렉터리만 생성합니다.
+
+## Vercel 웹 배포
+
+저장소 루트를 Vercel 프로젝트에 연결합니다. `vercel.json`은 `npm run build:web`, 출력 `dist/`, `/api`를 제외한 SPA 경로 재작성을 지정합니다. 웹 빌드에는 DB나 Blob 비밀값이 필요하지 않습니다. API를 포함한 실제 실행에는 아래 리소스가 필요합니다.
+
+1. [Vercel Marketplace의 Neon](https://vercel.com/marketplace/neon/neon)을 연결하고 Postgres DB를 만듭니다. 프로젝트 환경 변수의 `DATABASE_URL`이 해당 DB 연결 문자열인지 확인합니다.
+2. 프로젝트에 **Public** [Vercel Blob 스토어](https://vercel.com/docs/vercel-blob)를 연결하고 `BLOB_READ_WRITE_TOKEN`을 설정합니다. 업로드된 상품 이미지는 공개 HTTPS URL로 표시하므로 Private 스토어는 사용할 수 없습니다.
+3. 사용할 Development / Preview / Production 환경마다 변수를 설정합니다. 테스트용 DB·Blob과 운영용 리소스는 분리합니다. 두 변수 모두 서버 전용이며 `VITE_` 접두사를 붙이면 안 됩니다.
+
+변수 이름은 [`.env.example`](.env.example)에 있습니다. 실제 값은 Vercel 환경 변수 또는 Git에서 제외되는 `.env.local`에만 저장합니다. 관리자 세션은 무작위 토큰의 해시·만료 시간을 DB의 `admin_sessions`에 저장하며, 별도의 `SESSION_SECRET`은 사용하지 않습니다. 쿠키는 HttpOnly/Secure/SameSite=Lax이고 유휴 만료는 5분입니다.
+
+아래 명령은 설치된 Vercel CLI 대신 `npx`로 실행하는 예시입니다. 프로젝트 연결·환경 변수 가져오기·배포의 자세한 내용은 [Vercel CLI 배포 안내](https://vercel.com/docs/projects/deploy-from-cli)를 참고하십시오.
+
+```bash
+npx vercel link
+npx vercel env pull .env.local
+```
+
+연결한 DB의 Neon SQL Editor에서 [`api/schema.sql`](api/schema.sql) 전체를 먼저 실행합니다. 그런 다음 해당 DB의 `DATABASE_URL`이 프로세스 환경에 설정된 셸에서 초기 데이터를 설치합니다.
+
+```bash
+npm run seed:web
+```
+
+`.env.local`에서 직접 읽어 같은 seed 스크립트를 실행하려면 Node의 환경 파일 로더를 사용합니다(`npm run seed:web` 자체는 환경 파일을 자동 로드하지 않습니다).
+
+```bash
+node --env-file=.env.local --import=tsx scripts/seed-web.ts
+```
+
+seed는 데이터가 없는 DB에 기본 카테고리·상품·설정을 넣으며, 기존 판매 데이터가 있으면 보존합니다. 관리자 자격 증명이 없을 때만 초기 비밀번호 `admin0000`의 scrypt 해시를 생성합니다. 첫 로그인 후 `/admin/system`에서 비밀번호를 바꾸십시오. 초기화는 배포 빌드와 분리되어 있고, 매 배포마다 seed가 실행되지 않습니다.
+
+API와 프런트엔드를 같은 origin으로 로컬 실행하려면 다음 명령을 사용합니다. `vercel dev`는 `devCommand`를 통해 웹 Vite 설정을 사용하고 `/api` 함수를 제공합니다. `npm run dev:web`만 실행하면 DB API가 제공되지 않습니다. 관리자 Secure 쿠키 검증에는 HTTPS 배포 또는 Chromium의 신뢰 가능한 `http://localhost` 로컬 주소를 사용합니다.
+
+```bash
+npx vercel dev
+```
+
+배포 전에 검증하고 Preview를 만든 뒤, 해당 환경에도 schema와 seed가 적용되었는지 확인합니다. 환경 변수 변경은 새 배포에 적용합니다.
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build:web
+npx vercel deploy
+# Preview 검증을 마친 뒤 운영 환경 배포
+npx vercel deploy --prod
+```
+
+### 선택 실행형 웹 영속성 검사
+
+[`e2e/web-persistence.spec.ts`](e2e/web-persistence.spec.ts)는 실제 API·Neon·Blob에 연결합니다. **전용 테스트 환경**을 준비하고 `WEB_E2E_BASE_URL`과 `WEB_E2E_ADMIN_PASSWORD`를 테스트 프로세스 환경에 지정한 뒤 실행합니다. 주소는 접근 가능한 배포 origin(예: `https://your-test-project.vercel.app`) 또는 API가 설정된 `http://localhost:3000`입니다. Vercel 로그인 보호가 있다면 테스트 브라우저가 접근 가능한 전용 테스트 배포를 사용하십시오.
+
+```bash
+npx playwright install chromium
+npm run test:web-e2e
+```
+
+두 변수 중 하나라도 없으면 테스트는 브라우저나 서버를 시작하지 않고 skip합니다. CI의 lint/typecheck/unit/build 및 Electron E2E에는 클라우드 자격 증명이 필요하지 않습니다. 테스트 비밀번호를 파일로 지정할 경우 Git에서 제외되는 `.env.local`에 넣고 아래처럼 실행할 수 있습니다.
+
+```bash
+node --env-file=.env.local node_modules/@playwright/test/cli.js test --config playwright.web.config.ts
+```
+
+검사는 브라우저 관리자 로그인 → PNG 업로드 → 상품 생성 → 새 고객 세션에서 목록 새로고침 → HTTPS 이미지의 `naturalWidth > 0` → 같은 `requestId` 동시 주문의 동일 결과와 조회 영속성 → 다른 주문 내용으로 재사용 시 409를 확인합니다. 종료 시 생성한 상품만 제거합니다. 주문 스냅샷과 업로드한 Blob은 남으므로 테스트 리소스에서 정리하십시오. 카탈로그 저장은 전체 교체 방식이므로 검사 중 다른 관리자 편집을 하지 마십시오. 비밀번호가 포함될 수 있는 Playwright trace는 이 검사에서 기록하지 않습니다.
 
 ## Windows 패키징
 
