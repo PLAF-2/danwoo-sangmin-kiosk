@@ -20,7 +20,16 @@ export function SquareImagePicker({
     if (!api.media.upload) return;
     setError('');
     setUploading(true);
-    try { onSaved(await api.media.upload(file)); }
+    try {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+        throw new Error('PNG, JPEG, WebP 이미지를 선택해 주세요.');
+      }
+      const image = await createImageBitmap(file);
+      const isSquare = image.width === image.height;
+      image.close();
+      if (!isSquare) throw new Error('가로와 세로가 같은 1:1 이미지를 선택해 주세요.');
+      onSaved(await api.media.upload(file));
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : '이미지를 저장하지 못했습니다.'); }
     finally { setUploading(false); }
   };

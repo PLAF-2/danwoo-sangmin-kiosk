@@ -18,5 +18,6 @@ const contentSecurityPolicy: Plugin = {
 
 export default defineConfig({
   plugins: [contentSecurityPolicy, react()],
+  publicDir: 'data/defaults',
   build: { outDir: 'dist' },
 });

@@ -15,7 +15,8 @@ export function toKioskMediaUrl(storedPath: string): string {
     throw new Error(`Unsafe kiosk media path: ${storedPath}`);
   }
   const segments = parsed.data.split('/');
-  return `kiosk-media://images/${segments.slice(1).map(encodeURIComponent).join('/')}`;
+  const prefix = (globalThis as { kiosk?: KioskApi }).kiosk ? 'kiosk-media://' : '/';
+  return `${prefix}images/${segments.slice(1).map(encodeURIComponent).join('/')}`;
 }
 
 export interface MediaSelection {
