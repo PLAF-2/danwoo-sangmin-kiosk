@@ -71,7 +71,7 @@ describe('CatalogPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '앨범 상품 담기' }));
     expect(screen.getByTestId('location')).toHaveTextContent('/shop');
-    expect(screen.getByText('총 1개')).toBeInTheDocument();
+    expect(screen.getByText('선택한 상품 1개')).toBeInTheDocument();
     expect(screen.getAllByText('12,000원')).toHaveLength(3);
 
     fireEvent.click(screen.getByTestId('product-card-album'));
@@ -87,11 +87,11 @@ describe('CatalogPage', () => {
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/checkout'));
   });
 
-  it('uses the express cart dock for the primary checkout action', async () => {
+  it('uses a compact express cart dock for the primary checkout action', async () => {
     renderCatalog();
     await screen.findByText('앨범 상품');
 
-    expect(screen.getByLabelText('내가 담은 굿즈')).toHaveClass('cart-panel--express');
+    expect(screen.getByLabelText('내가 담은 굿즈')).toHaveClass('cart-panel--dock');
   });
 
   it('shows a fallback message for an active category without products', async () => {

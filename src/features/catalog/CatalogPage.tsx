@@ -154,8 +154,7 @@ export function CatalogPage() {
           {catalog && products.length === 0 && <p className="catalog-empty">표시할 상품이 없습니다.</p>}
         </div>
       </section>
-      <section className="cart-panel cart-panel--express" aria-label="내가 담은 굿즈">
-        <h1>내가 담은 굿즈</h1>
+      <section className="cart-panel cart-panel--dock" aria-label="내가 담은 굿즈">
         <div className="cart-scroll" data-testid="cart-scroll">
           {cartLines.length === 0 ? <p>장바구니가 비어 있습니다.</p> : cartLines.map(({ item, product }) => (
             <div className="cart-line" key={product.id}>
@@ -169,7 +168,7 @@ export function CatalogPage() {
           ))}
         </div>
         <footer className="cart-summary">
-          <span>총 {cart.itemCount()}개</span><strong>{won(cart.subtotal())}</strong>
+          <span>선택한 상품 {cart.itemCount()}개</span><strong>{won(cart.subtotal())}</strong>
           <button disabled={cart.itemCount() === 0} onClick={() => navigate('/checkout')} type="button">구매하러 가기</button>
         </footer>
       </section>
