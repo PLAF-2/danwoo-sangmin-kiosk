@@ -87,6 +87,13 @@ describe('CatalogPage', () => {
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/checkout'));
   });
 
+  it('uses the express cart dock for the primary checkout action', async () => {
+    renderCatalog();
+    await screen.findByText('앨범 상품');
+
+    expect(screen.getByLabelText('내가 담은 굿즈')).toHaveClass('cart-panel--express');
+  });
+
   it('shows a fallback message for an active category without products', async () => {
     renderCatalog();
     await screen.findByText('앨범 상품');

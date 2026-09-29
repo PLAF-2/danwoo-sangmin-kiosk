@@ -35,4 +35,12 @@
 .processing-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
 .processing-actions button { min-width: var(--touch-target-min, 48px); min-height: var(--touch-target-min, 48px); padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-pill); color: var(--color-navy); background: var(--color-mist); cursor: pointer; }
 .processing-actions button:first-child { color: #fff; background: var(--color-blue); font-weight: 800; }
+
+.checkout-page { background: var(--color-cream); }
+.checkout-header strong { color: var(--color-navy); font-size: clamp(1.5rem, 5vw, 2.5rem); }
+.checkout-fixed { border: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; color: #fff; background: var(--color-navy); box-shadow: 0 -8px 24px rgb(25 55 95 / 16%); }
+.checkout-total { border-top-color: rgb(255 255 255 / 24%); font-size: 1.35rem; }
+.checkout-actions .checkout-submit { min-height: 4rem; }
+.processing-page { background: var(--color-cream); }
+.processing-brand { color: var(--color-navy); }
 @keyframes processing-spin { to { transform: rotate(360deg); } }

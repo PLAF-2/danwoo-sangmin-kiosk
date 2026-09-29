@@ -57,7 +57,7 @@
   border: 0;
   border-radius: var(--radius-pill);
   color: var(--color-cream);
-  background: var(--color-navy);
+  background: var(--color-blue);
   box-shadow: var(--shadow-lg);
   font-size: clamp(1.375rem, 5vw, 2rem);
   font-weight: 800;

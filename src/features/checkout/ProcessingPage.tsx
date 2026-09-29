@@ -74,7 +74,6 @@ export function ProcessingPage() {
     <main className="processing-page">
       <strong className="processing-brand">HIGHEST</strong>
       <section aria-labelledby="processing-heading" className="processing-content">
-        {!failure && <div aria-hidden="true" className="processing-star">✦</div>}
         <h1 id="processing-heading">{failure ? failureHeading : bankQr ? '주문을 접수하고 있어요' : '결제를 처리하고 있어요'}</h1>
         {failure ? <>
           <p className="checkout-alert" role="alert">{failure.message}</p>

@@ -133,7 +133,7 @@ export function CatalogPage() {
     <main className="catalog-page">
       <header className="catalog-header">
         <button aria-label="처음으로" onClick={leaveForHome} type="button">처음으로</button>
-        <div><strong>HIGHEST</strong><span>CLOUD ACADEMY SUPPLY SHOP</span></div>
+        <strong>HIGHEST</strong>
       </header>
       <nav aria-label="상품 카테고리" className="category-tabs">
         <button aria-pressed={selectedCategoryId === allCategoryId} onClick={() => setSelectedCategoryId(allCategoryId)} type="button">전체</button>
@@ -154,7 +154,7 @@ export function CatalogPage() {
           {catalog && products.length === 0 && <p className="catalog-empty">표시할 상품이 없습니다.</p>}
         </div>
       </section>
-      <section className="cart-panel" aria-label="내가 담은 굿즈">
+      <section className="cart-panel cart-panel--express" aria-label="내가 담은 굿즈">
         <h1>내가 담은 굿즈</h1>
         <div className="cart-scroll" data-testid="cart-scroll">
           {cartLines.length === 0 ? <p>장바구니가 비어 있습니다.</p> : cartLines.map(({ item, product }) => (

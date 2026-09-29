@@ -99,7 +99,6 @@ export function ProductDetailPage() {
       <header className="product-detail-header">
         <button aria-label="상품 목록으로" onClick={goBack} type="button">‹ 목록</button>
         <strong>HIGHEST</strong>
-        <span aria-hidden="true">☁</span>
       </header>
       <section className="product-detail-card" aria-label="상품 상세">
         <div className="product-gallery" aria-label="상품 이미지 갤러리">

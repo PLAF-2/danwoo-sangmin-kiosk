@@ -101,4 +101,11 @@ describe('ProductDetailPage', () => {
     fireEvent.error(image);
     expect(image).toHaveAttribute('src', expect.stringContaining('horizon-keyring'));
   });
+
+  it('does not render decorative cloud chrome in the product header', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: '상세 상품' });
+
+    expect(document.body.textContent).not.toContain('☁');
+  });
 });

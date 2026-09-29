@@ -42,10 +42,10 @@ export function CompletionPage() {
   if (!order) return <main className="completion-page completion-error"><h1>주문을 찾을 수 없습니다</h1><p>주문 번호를 확인하거나 처음 화면에서 다시 시작해 주세요.</p><button onClick={reset} type="button">처음으로</button></main>;
   return <main className="completion-page" onPointerDown={() => setSeconds(duration)}>
     <header><strong>HIGHEST</strong><span>FLIGHT ORDER COMPLETE</span></header>
-    <section className="completion-hero"><span aria-hidden="true">✦</span><h1>{headings[order.paymentMode]}</h1><p>호라이즌의 비행 준비가 완료되었어요.</p></section>
+    <section className="completion-hero"><h1>{headings[order.paymentMode]}</h1><p>호라이즌의 비행 준비가 완료되었어요.</p></section>
     <section aria-label="주문 정보" className="completion-ticket"><div><span>주문번호</span><strong>{order.orderNumber}</strong></div><div><span>결제금액</span><strong>{won(order.total)}</strong><span>결제수단 · {paymentLabels[order.paymentMode]}</span></div></section>
     <section className="completion-pickup"><h2>굿즈 수령 안내</h2><p>{pickupMessage}</p>{order.paymentMode === 'bankQr' && <p>운영자가 입금 내역을 확인한 후 주문을 처리합니다.</p>}</section>
-    <button className="completion-home" onClick={reset} type="button">✦ 처음으로 돌아가기 →</button>
+    <button className="completion-home" onClick={reset} type="button">처음으로 돌아가기</button>
     {seconds <= 5 && <p className="completion-countdown">{seconds}초 후 처음 화면으로 이동합니다.</p>}
   </main>;
 }
