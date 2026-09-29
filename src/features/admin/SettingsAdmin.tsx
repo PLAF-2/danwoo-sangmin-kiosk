@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useKioskApi } from '../../app/providers';
 
-import type { AppSettings, CatalogData, PaymentSettings } from '../../domain';
+import { appSettingsSchema, type AppSettings, type CatalogData, type PaymentSettings } from '../../domain';
 import { toKioskMediaUrl } from '../../services/kioskApi';
 import { SquareImagePicker } from './SquareImagePicker';
 import { useAdminSession } from './AdminApp';
@@ -104,8 +104,13 @@ export function WelcomeAdmin() {
     event.preventDefault();
     if (!settings) return;
     setError('');
+    const parsed = appSettingsSchema.safeParse(settings);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.path[0] === 'welcomeMessage' ? '안내 문구를 입력해 주세요.' : '입력 값을 확인해 주세요.');
+      return;
+    }
     try {
-      await api.settings.save(settings);
+      await api.settings.save(parsed.data);
       setMessage('웰컴 화면 설정을 저장했습니다.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '저장하지 못했습니다.');
