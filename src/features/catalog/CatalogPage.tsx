@@ -169,6 +169,13 @@ export function CatalogPage() {
     }),
     [cart.items, catalog],
   );
+  const cartOpen = cart.itemCount() > 0;
+  // Keeps the last filled cart on screen while the dock slides away, so it never flashes "0원".
+  const [dock, setDock] = useState({ lines: cartLines, count: 0, subtotal: 0 });
+  useEffect(() => {
+    if (cartOpen) setDock({ lines: cartLines, count: cart.itemCount(), subtotal: cart.subtotal() });
+  }, [cart, cartLines, cartOpen]);
+  const shownDock = cartOpen ? { lines: cartLines, count: cart.itemCount(), subtotal: cart.subtotal() } : dock;
 
   function leaveForHome() {
     if (cart.itemCount() === 0 || window.confirm('장바구니를 비우고 처음으로 갈까요?')) {
@@ -193,7 +200,7 @@ export function CatalogPage() {
   }
 
   return (
-    <main className="catalog-page">
+    <main className={`catalog-page${cartOpen ? ' catalog-page--cart-open' : ''}`}>
       <header className="catalog-header">
         <button aria-label="처음으로" className="catalog-home" onClick={leaveForHome} type="button">
           <svg aria-hidden="true" height="22" viewBox="0 0 24 24" width="22">
@@ -221,9 +228,14 @@ export function CatalogPage() {
           {catalog && products.length === 0 && <p className="catalog-empty">표시할 상품이 없습니다.</p>}
         </div>
       </section>
-      <section className="cart-panel cart-panel--dock" aria-label="내가 담은 굿즈">
+      <section
+        aria-hidden={!cartOpen}
+        aria-label="내가 담은 굿즈"
+        className={`cart-panel cart-panel--dock${cartOpen ? ' cart-panel--open' : ''}`}
+        inert={!cartOpen}
+      >
         <div className="cart-scroll cart-dock__items cart-dock__items--scrollable" data-testid="cart-scroll">
-          {cartLines.length === 0 ? <p>장바구니가 비어 있습니다.</p> : cartLines.map(({ key, item, product, options, label }) => (
+          {shownDock.lines.map(({ key, item, product, options, label }) => (
             <div className="cart-line" key={key}>
               <img alt="" onError={(event) => { event.currentTarget.src = ''; }} src={toKioskMediaUrl(product.thumbnailImage)} />
               <span className="cart-line__name">{product.name}{options && <small>{options}</small>}</span>
@@ -235,8 +247,8 @@ export function CatalogPage() {
           ))}
         </div>
         <footer className="cart-summary">
-          <span>선택한 상품 {cart.itemCount()}개</span><strong>{won(cart.subtotal())}</strong>
-          <button disabled={cart.itemCount() === 0} onClick={() => navigate('/checkout')} type="button">구매하러 가기</button>
+          <span>선택한 상품 {shownDock.count}개</span><strong>{won(shownDock.subtotal)}</strong>
+          <button disabled={!cartOpen} onClick={() => navigate('/checkout')} type="button">구매하러 가기</button>
         </footer>
       </section>
       {optionProduct && (

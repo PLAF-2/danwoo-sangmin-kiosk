@@ -87,13 +87,17 @@ describe('CatalogPage', () => {
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/checkout'));
   });
 
-  it('uses a compact express cart dock for the primary checkout action', async () => {
+  it('keeps the cart dock hidden until something is added, then slides it open', async () => {
     renderCatalog();
     await screen.findByText('앨범 상품');
+    const dock = screen.getByLabelText('내가 담은 굿즈');
+    expect(dock).not.toHaveClass('cart-panel--open');
+    expect(dock).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByRole('region', { name: '내가 담은 굿즈' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '앨범 상품 담기' }));
 
-    expect(screen.getByLabelText('내가 담은 굿즈')).toHaveClass('cart-panel--dock');
+    expect(screen.getByRole('region', { name: '내가 담은 굿즈' })).toHaveClass('cart-panel--dock', 'cart-panel--open');
     expect(screen.getByTestId('cart-scroll')).toHaveClass('cart-dock__items');
     expect(screen.getByRole('button', { name: '앨범 상품 수량 줄이기' })).toBeVisible();
     expect(screen.getByRole('button', { name: '앨범 상품 수량 늘리기' })).toBeVisible();
@@ -126,7 +130,10 @@ describe('CatalogPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '앨범 상품 수량 줄이기' }));
     expect(window.confirm).toHaveBeenCalled();
-    expect(screen.getByText('장바구니가 비어 있습니다.')).toBeInTheDocument();
+    const dock = screen.getByLabelText('내가 담은 굿즈');
+    expect(dock).not.toHaveClass('cart-panel--open');
+    // The last contents stay visible while the dock slides away instead of flashing an empty cart.
+    expect(dock).toHaveTextContent('선택한 상품 1개');
 
     fireEvent.click(screen.getByRole('button', { name: '처음으로' }));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/'));
@@ -161,7 +168,7 @@ describe('CatalogPage', () => {
     expect(within(dialog).getByRole('button', { name: '장바구니에 담기' })).toBeDisabled();
     fireEvent.click(within(dialog).getByRole('button', { name: '취소' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByText('장바구니가 비어 있습니다.')).toBeInTheDocument();
+    expect(screen.getByLabelText('내가 담은 굿즈')).not.toHaveClass('cart-panel--open');
 
     for (const member of ['단우', '상민']) {
       fireEvent.click(screen.getByRole('button', { name: '졸업 패키지 담기' }));

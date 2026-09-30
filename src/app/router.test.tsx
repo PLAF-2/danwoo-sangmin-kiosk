@@ -114,10 +114,10 @@ describe('application router', () => {
     router.dispose();
   });
 
-  it('renders the shop with its cart dock', async () => {
+  it('renders the shop product list', async () => {
     const router = createAppMemoryRouter(['/shop']);
     render(<RouterProvider router={router} />);
-    expect(await screen.findByRole('region', { name: '내가 담은 굿즈' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: '상품 목록' })).toBeInTheDocument();
     router.dispose();
   });
 
