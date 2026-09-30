@@ -155,7 +155,7 @@ export function CatalogPage() {
         </div>
       </section>
       <section className="cart-panel cart-panel--dock" aria-label="내가 담은 굿즈">
-        <div className="cart-scroll cart-dock__items" data-testid="cart-scroll">
+        <div className="cart-scroll cart-dock__items cart-dock__items--scrollable" data-testid="cart-scroll">
           {cartLines.length === 0 ? <p>장바구니가 비어 있습니다.</p> : cartLines.map(({ item, product }) => (
             <div className="cart-line" key={product.id}>
               <img alt="" onError={(event) => { event.currentTarget.src = ''; }} src={toKioskMediaUrl(product.thumbnailImage)} />

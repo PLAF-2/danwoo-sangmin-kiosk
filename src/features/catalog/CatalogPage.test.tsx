@@ -99,6 +99,18 @@ describe('CatalogPage', () => {
     expect(screen.getByRole('button', { name: '앨범 상품 수량 늘리기' })).toBeVisible();
   });
 
+  it('keeps every added product available in the scrollable cart list', async () => {
+    renderCatalog();
+    await screen.findByText('앨범 상품');
+
+    fireEvent.click(screen.getByRole('button', { name: '앨범 상품 담기' }));
+    fireEvent.click(screen.getByRole('button', { name: '포토북 상품 담기' }));
+
+    expect(screen.getByTestId('cart-scroll')).toHaveClass('cart-dock__items--scrollable');
+    expect(screen.getByRole('button', { name: '앨범 상품 수량 늘리기' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '포토북 상품 수량 늘리기' })).toBeVisible();
+  });
+
   it('shows a fallback message for an active category without products', async () => {
     renderCatalog();
     await screen.findByText('앨범 상품');
