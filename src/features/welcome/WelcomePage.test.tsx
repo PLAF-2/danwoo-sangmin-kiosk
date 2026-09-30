@@ -21,17 +21,16 @@ const product = {
   maxQuantity: 3,
 } satisfies Pick<Product, 'id' | 'price' | 'maxQuantity'>;
 
-function renderWelcome(settings = createAppSettings()) {
+function renderWelcome() {
+  const read = vi.fn().mockResolvedValue(createAppSettings());
   Object.defineProperty(window, 'kiosk', {
     configurable: true,
-    value: {
-      settings: { read: vi.fn().mockResolvedValue(settings) },
-    } as unknown as KioskApi,
+    value: { settings: { read } } as unknown as KioskApi,
   });
 
   const router = createAppMemoryRouter(['/']);
   render(<App router={router} />);
-  return router;
+  return { router, read };
 }
 
 describe('WelcomePage', () => {
@@ -43,52 +42,18 @@ describe('WelcomePage', () => {
     useCartStore.getState().clear();
   });
 
-  it('uses the configured welcome image with its focal position and scale', async () => {
-    const router = renderWelcome(createAppSettings({
-      welcomeBackgroundImage: 'images/custom-welcome.svg',
-      welcomeImagePosition: { x: 32, y: 68 },
-      welcomeImageScale: 1.4,
-    }));
+  it('shows the shipped welcome image on the first render with only the start button', () => {
+    const { router } = renderWelcome();
 
-    const welcome = await screen.findByTestId('welcome-page');
-    expect(welcome).toHaveStyle({
-      backgroundImage: 'url("/images/custom-welcome.svg")',
-      backgroundPosition: '32% 68%',
-      backgroundSize: 'cover',
-      transform: 'scale(1.4)',
-    });
-
-    router.dispose();
-  });
-
-  it('shows the configured message and honors logo visibility', async () => {
-    const router = renderWelcome(createAppSettings({
-      welcomeLogoVisible: false,
-      welcomeMessage: '오늘의 HIGHEST를 만나보세요.',
-    }));
-
-    expect(await screen.findByText('오늘의 HIGHEST를 만나보세요.')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'HIGHEST' })).not.toBeInTheDocument();
-
-    router.dispose();
-  });
-
-  it('uses the safe default message when settings cannot be read', async () => {
-    Object.defineProperty(window, 'kiosk', {
-      configurable: true,
-      value: { settings: { read: vi.fn().mockRejectedValue(new Error('offline')) } } as unknown as KioskApi,
-    });
-    const router = createAppMemoryRouter(['/']);
-    render(<App router={router} />);
-
-    expect(await screen.findByText('새로운 수평선을 만나보세요.')).toBeInTheDocument();
-
+    expect(screen.getByTestId('welcome-page')).toHaveAttribute('src', '/images/welcome-kiosk.webp');
+    expect(screen.getByRole('button', { name: '굿즈 사러가기' })).toBeInTheDocument();
+    expect(screen.queryByText('HIGHEST')).not.toBeInTheDocument();
     router.dispose();
   });
 
   it('starts shopping without clearing the cart', async () => {
     useCartStore.getState().add(product);
-    const router = renderWelcome();
+    const { router } = renderWelcome();
 
     fireEvent.click(await screen.findByRole('button', { name: '굿즈 사러가기' }));
 
@@ -97,24 +62,9 @@ describe('WelcomePage', () => {
     router.dispose();
   });
 
-  it('opens admin only after a long press', async () => {
+  it('opens admin after a long press on the hidden corner control', async () => {
     vi.useFakeTimers();
-    const router = renderWelcome();
-    const logo = screen.getByRole('button', { name: 'HIGHEST 관리자 진입' });
-
-    fireEvent.pointerDown(logo);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(800);
-    });
-
-    expect(navigate).toHaveBeenCalledWith('/admin/login');
-    router.dispose();
-  });
-
-  it('opens admin from the hidden corner control when the logo is hidden', async () => {
-    const router = renderWelcome(createAppSettings({ welcomeLogoVisible: false, welcomeMessage: '관리자 진입 테스트' }));
-    await screen.findByText('관리자 진입 테스트');
-    vi.useFakeTimers();
+    const { router } = renderWelcome();
     const hotspot = screen.getByRole('button', { name: '관리자 진입' });
 
     fireEvent.pointerDown(hotspot);
@@ -126,12 +76,12 @@ describe('WelcomePage', () => {
     router.dispose();
   });
 
-  it('ignores a short press on the logo', async () => {
-    const router = renderWelcome();
-    const logo = screen.getByRole('button', { name: 'HIGHEST 관리자 진입' });
+  it('ignores a short press on the corner control', () => {
+    const { router } = renderWelcome();
+    const hotspot = screen.getByRole('button', { name: '관리자 진입' });
 
-    fireEvent.pointerDown(logo);
-    fireEvent.pointerUp(logo);
+    fireEvent.pointerDown(hotspot);
+    fireEvent.pointerUp(hotspot);
 
     expect(navigate).not.toHaveBeenCalled();
     router.dispose();

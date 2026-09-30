@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppSettings, createCatalogData, createPaymentSettings } from '../../test/fixtures';
-import { CategoriesAdmin, PaymentAdmin, WelcomeAdmin } from './SettingsAdmin';
+import { CategoriesAdmin, PaymentAdmin } from './SettingsAdmin';
 
 const catalogRead = vi.fn();
 const catalogSave = vi.fn();
@@ -67,51 +67,6 @@ describe('category administration', () => {
   });
 });
 
-describe('welcome administration', () => {
-  it('uploads and adjusts the actual 9:16 preview before saving', async () => {
-    render(<WelcomeAdmin />);
-
-    expect(await screen.findByLabelText('9:16 웰컴 미리보기')).toHaveStyle({ aspectRatio: '9 / 16' });
-    fireEvent.change(screen.getByLabelText('배경 이미지 업로드'), { target: { files: [image('welcome.png')] } });
-    await waitFor(() => expect(upload).toHaveBeenCalled());
-    fireEvent.change(screen.getByLabelText('가로 위치'), { target: { value: '25' } });
-    fireEvent.change(screen.getByLabelText('세로 위치'), { target: { value: '70' } });
-    fireEvent.change(screen.getByLabelText('확대 배율'), { target: { value: '1.8' } });
-    fireEvent.click(screen.getByLabelText('로고 표시'));
-    fireEvent.change(screen.getByLabelText('안내 문구'), { target: { value: '호라이즌에 오신 것을 환영합니다.' } });
-    fireEvent.click(screen.getByRole('button', { name: '웰컴 설정 저장' }));
-
-    await waitFor(() => expect(settingsSave).toHaveBeenCalledWith(expect.objectContaining({
-      welcomeBackgroundImage: 'images/new-welcome.png',
-      welcomeImagePosition: { x: 25, y: 70 },
-      welcomeImageScale: 1.8,
-      welcomeLogoVisible: false,
-      welcomeMessage: '호라이즌에 오신 것을 환영합니다.',
-    })));
-  });
-
-  it('confirms before restoring the default background', async () => {
-    settingsRead.mockResolvedValue(createAppSettings({ welcomeBackgroundImage: 'images/custom.png' }));
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    render(<WelcomeAdmin />);
-
-    await screen.findByLabelText('9:16 웰컴 미리보기');
-    fireEvent.click(screen.getByRole('button', { name: '기본 배경 복원' }));
-    expect(confirm).toHaveBeenCalled();
-    expect(screen.getByLabelText('9:16 웰컴 미리보기')).toHaveStyle({
-      backgroundImage: expect.stringContaining('custom.png'),
-    });
-  });
-
-  it('saves a welcome setting with an empty message', async () => {
-    render(<WelcomeAdmin />);
-
-    fireEvent.change(await screen.findByLabelText('안내 문구'), { target: { value: '' } });
-    fireEvent.click(screen.getByRole('button', { name: '웰컴 설정 저장' }));
-
-    await waitFor(() => expect(settingsSave).toHaveBeenCalledWith(expect.objectContaining({ welcomeMessage: '' })));
-  });
-});
 
 describe('payment administration', () => {
   it.each(['instant', 'simulation'] as const)('saves %s mode', async (value) => {

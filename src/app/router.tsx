@@ -14,7 +14,7 @@ import {
   AdminShell,
 } from '../features/admin/AdminApp';
 import { ProductAdmin } from '../features/admin/ProductAdmin';
-import { CategoriesAdmin, PaymentAdmin, SystemAdmin, WelcomeAdmin } from '../features/admin/SettingsAdmin';
+import { CategoriesAdmin, PaymentAdmin, SystemAdmin } from '../features/admin/SettingsAdmin';
 
 import { CatalogPage } from '../features/catalog/CatalogPage';
 import { CheckoutPage } from '../features/checkout/CheckoutPage';
@@ -61,7 +61,6 @@ export const appRoutes: RouteObject[] = [
           children: [
             { path: 'products', element: <ProductAdmin /> },
             { path: 'categories', element: <CategoriesAdmin /> },
-            { path: 'welcome', element: <WelcomeAdmin /> },
             { path: 'payment', element: <PaymentAdmin /> },
             { path: 'system', element: <SystemAdmin /> },
           ],

@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1600" role="img" aria-label="Welcome background placeholder">
-  <rect width="900" height="1600" fill="#101820"/>
-  <circle cx="720" cy="320" r="420" fill="#22384a"/>
-  <path d="M0 1180 900 760v840H0z" fill="#182936"/>
-  <text x="450" y="800" fill="#f2ede3" font-family="sans-serif" font-size="72" text-anchor="middle">HIGHEST</text>
-</svg>

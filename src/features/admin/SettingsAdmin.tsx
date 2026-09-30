@@ -1,8 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useKioskApi } from '../../app/providers';
 
-import { appSettingsSchema, type AppSettings, type CatalogData, type PaymentSettings } from '../../domain';
-import { toKioskMediaUrl } from '../../services/kioskApi';
+import type { CatalogData, PaymentSettings } from '../../domain';
 import { SquareImagePicker } from './SquareImagePicker';
 import { useAdminSession } from './AdminApp';
 
@@ -71,103 +70,6 @@ export function CategoriesAdmin() {
         })}
       </div>
       <button type="button" onClick={() => void save()}>카테고리 저장</button>
-    </section>
-  );
-}
-
-export function WelcomeAdmin() {
-  const api = useKioskApi();
-  const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    void api.settings.read().then(setSettings).catch((cause) => setError(String(cause)));
-  }, [api]);
-
-  const upload = async (file: File) => {
-    if (!settings) return;
-    setError('');
-    setUploading(true);
-    try {
-      const path = await api.media.upload(file);
-      setSettings((current) => current && ({ ...current, welcomeBackgroundImage: path }));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '이미지를 가져오지 못했습니다.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const save = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!settings) return;
-    setError('');
-    const parsed = appSettingsSchema.safeParse(settings);
-    if (!parsed.success) {
-      setError('입력 값을 확인해 주세요.');
-      return;
-    }
-    try {
-      await api.settings.save(parsed.data);
-      setMessage('웰컴 화면 설정을 저장했습니다.');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '저장하지 못했습니다.');
-    }
-  };
-
-  if (!settings) return <section><h1>웰컴 화면 관리</h1><p>{error || '불러오는 중…'}</p></section>;
-  const imageUrl = settings.welcomeBackgroundImage ? toKioskMediaUrl(settings.welcomeBackgroundImage) : '';
-
-  return (
-    <section className="admin-page">
-      <header className="admin-page-header"><div><p className="admin-eyebrow">WELCOME SKY</p><h1>웰컴 화면 관리</h1></div></header>
-      <Feedback error={error} message={message} />
-      <div className="admin-preview-layout">
-        <div
-          aria-label="9:16 웰컴 미리보기"
-          className="admin-welcome-preview"
-          style={{
-            aspectRatio: '9 / 16',
-            backgroundImage: imageUrl ? `url("${imageUrl}")` : undefined,
-            backgroundPosition: `${settings.welcomeImagePosition.x}% ${settings.welcomeImagePosition.y}%`,
-            backgroundSize: `${settings.welcomeImageScale * 100}%`,
-          }}
-        >
-          {settings.welcomeLogoVisible && <strong>HIGHEST</strong>}
-          <p>{settings.welcomeMessage}</p>
-        </div>
-        <form className="admin-settings-form" onSubmit={(event) => void save(event)}>
-          <div className="admin-actions">
-            <label>배경 이미지 업로드<input
-              accept="image/png,image/jpeg,image/webp"
-              disabled={uploading}
-              type="file"
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (file) void upload(file);
-                event.currentTarget.value = '';
-              }}
-            /></label>
-            {uploading && <p role="status">이미지 업로드 중…</p>}
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm('업로드한 배경을 지우고 기본 배경으로 복원할까요?')) {
-                  setSettings({ ...settings, welcomeBackgroundImage: '' });
-                }
-              }}
-            >기본 배경 복원</button>
-          </div>
-          <label>가로 위치<input max="100" min="0" type="range" value={settings.welcomeImagePosition.x} onChange={(e) => setSettings({ ...settings, welcomeImagePosition: { ...settings.welcomeImagePosition, x: Number(e.target.value) } })} /></label>
-          <label>세로 위치<input max="100" min="0" type="range" value={settings.welcomeImagePosition.y} onChange={(e) => setSettings({ ...settings, welcomeImagePosition: { ...settings.welcomeImagePosition, y: Number(e.target.value) } })} /></label>
-          <label>확대 배율<input max="5" min="1" step="0.1" type="range" value={settings.welcomeImageScale} onChange={(e) => setSettings({ ...settings, welcomeImageScale: Number(e.target.value) })} /></label>
-          <label><input aria-label="로고 표시" checked={settings.welcomeLogoVisible} type="checkbox" onChange={(e) => setSettings({ ...settings, welcomeLogoVisible: e.target.checked })} /> 로고 표시</label>
-          <label>안내 문구<textarea value={settings.welcomeMessage} onChange={(e) => setSettings({ ...settings, welcomeMessage: e.target.value })} /></label>
-          <button disabled={uploading} type="submit">웰컴 설정 저장</button>
-        </form>
-      </div>
     </section>
   );
 }

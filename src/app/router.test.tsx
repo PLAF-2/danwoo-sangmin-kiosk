@@ -14,7 +14,6 @@ const routeCases = [
 const protectedAdminRoutes = [
   '/admin/products',
   '/admin/categories',
-  '/admin/welcome',
   '/admin/payment',
   '/admin/system',
 ] as const;

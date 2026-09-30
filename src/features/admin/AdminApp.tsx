@@ -140,7 +140,6 @@ export function AdminGuard() {
 const navigation = [
   ['/admin/products', '상품'],
   ['/admin/categories', '카테고리'],
-  ['/admin/welcome', '웰컴'],
   ['/admin/payment', '결제'],
   ['/admin/system', '시스템'],
 ] as const;
