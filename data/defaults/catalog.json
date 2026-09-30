@@ -35,7 +35,7 @@
     {
       "id": "photocard-student-id-danwoo",
       "name": "STUDENT ID 포토카드 (단우)",
-      "price": 3000,
+      "price": 4000,
       "categoryId": "photocards",
       "thumbnailImage": "images/photocard-student-id-danwoo-front.webp",
       "detailImages": [
@@ -58,7 +58,7 @@
     {
       "id": "photocard-student-id-sangmin",
       "name": "STUDENT ID 포토카드 (상민)",
-      "price": 3000,
+      "price": 4000,
       "categoryId": "photocards",
       "thumbnailImage": "images/photocard-student-id-sangmin-front.webp",
       "detailImages": [
@@ -81,7 +81,7 @@
     {
       "id": "photocard-locker-selfie",
       "name": "LOCKER SELFIE 포토카드",
-      "price": 3000,
+      "price": 4000,
       "categoryId": "photocards",
       "thumbnailImage": "images/photocard-locker-selfie-front.webp",
       "detailImages": [
@@ -104,7 +104,7 @@
     {
       "id": "photocard-practice-class",
       "name": "PRACTICE CLASS 포토카드",
-      "price": 3000,
+      "price": 4000,
       "categoryId": "photocards",
       "thumbnailImage": "images/photocard-practice-class-front.webp",
       "detailImages": [
@@ -127,7 +127,7 @@
     {
       "id": "photocard-rooftop",
       "name": "ROOFTOP 포토카드",
-      "price": 3000,
+      "price": 4000,
       "categoryId": "photocards",
       "thumbnailImage": "images/photocard-rooftop-front.webp",
       "detailImages": [
@@ -150,7 +150,7 @@
     {
       "id": "photocard-graduation-day",
       "name": "GRADUATION DAY 포토카드",
-      "price": 5000,
+      "price": 6000,
       "categoryId": "photocards",
       "thumbnailImage": "images/photocard-graduation-day-front.webp",
       "detailImages": [
@@ -173,7 +173,7 @@
     {
       "id": "photocard-random-pack",
       "name": "랜덤 포토카드 팩 (3장)",
-      "price": 8000,
+      "price": 6000,
       "categoryId": "photocards",
       "thumbnailImage": "images/photocard-random-pack.webp",
       "detailImages": [],
@@ -194,7 +194,7 @@
     {
       "id": "keyring-danwoo",
       "name": "단우 키링",
-      "price": 15000,
+      "price": 16000,
       "categoryId": "keyrings",
       "thumbnailImage": "images/keyring-danwoo-front.webp",
       "detailImages": [
@@ -217,7 +217,7 @@
     {
       "id": "keyring-sangmin",
       "name": "상민 키링",
-      "price": 15000,
+      "price": 16000,
       "categoryId": "keyrings",
       "thumbnailImage": "images/keyring-sangmin-front.webp",
       "detailImages": [
@@ -240,7 +240,7 @@
     {
       "id": "keyring-couple-set",
       "name": "자석 커플 키링 세트",
-      "price": 28000,
+      "price": 29000,
       "categoryId": "keyrings",
       "thumbnailImage": "images/keyring-couple-set-front.webp",
       "detailImages": [
@@ -263,7 +263,7 @@
     {
       "id": "keyring-highest-logo",
       "name": "하이스트 로고 키링",
-      "price": 18000,
+      "price": 14000,
       "categoryId": "keyrings",
       "thumbnailImage": "images/keyring-highest-logo-front.webp",
       "detailImages": [
@@ -332,7 +332,7 @@
     {
       "id": "doll-uniform-set",
       "name": "인형 교복 세트",
-      "price": 18000,
+      "price": 16000,
       "categoryId": "dolls",
       "thumbnailImage": "images/doll-uniform-set-front.webp",
       "detailImages": [
@@ -378,7 +378,7 @@
     {
       "id": "album-cloud-academy",
       "name": "1st Mini Album 『CLOUD ACADEMY』",
-      "price": 22000,
+      "price": 20000,
       "categoryId": "albums",
       "thumbnailImage": "images/album-cloud-academy.webp",
       "detailImages": [],
@@ -399,7 +399,7 @@
     {
       "id": "album-cloud-academy-sunbeam",
       "name": "『CLOUD ACADEMY』 SUNBEAM ver.",
-      "price": 22000,
+      "price": 20000,
       "categoryId": "albums",
       "thumbnailImage": "images/album-cloud-academy-sunbeam.webp",
       "detailImages": [],
@@ -420,7 +420,7 @@
     {
       "id": "album-cloud-academy-compass",
       "name": "『CLOUD ACADEMY』 COMPASS ver.",
-      "price": 22000,
+      "price": 20000,
       "categoryId": "albums",
       "thumbnailImage": "images/album-cloud-academy-compass.webp",
       "detailImages": [],
@@ -441,7 +441,7 @@
     {
       "id": "album-blue-hour",
       "name": "2nd Mini Album 『BLUE HOUR』",
-      "price": 22000,
+      "price": 20000,
       "categoryId": "albums",
       "thumbnailImage": "images/album-blue-hour.webp",
       "detailImages": [],
@@ -462,7 +462,7 @@
     {
       "id": "album-highest-day",
       "name": "Special Album 『HIGHEST DAY』",
-      "price": 32000,
+      "price": 28000,
       "categoryId": "albums",
       "thumbnailImage": "images/album-highest-day.webp",
       "detailImages": [],
@@ -483,7 +483,7 @@
     {
       "id": "set-admission-package",
       "name": "입학 패키지",
-      "price": 43000,
+      "price": 36000,
       "categoryId": "sets",
       "thumbnailImage": "images/set-admission-package.webp",
       "detailImages": [
@@ -509,7 +509,7 @@
     {
       "id": "set-class-h02",
       "name": "CLASS H-02 세트",
-      "price": 32000,
+      "price": 36000,
       "categoryId": "sets",
       "thumbnailImage": "images/set-class-h02.webp",
       "detailImages": [
@@ -539,7 +539,7 @@
     {
       "id": "set-graduation-package",
       "name": "졸업 패키지",
-      "price": 60000,
+      "price": 57000,
       "categoryId": "sets",
       "thumbnailImage": "images/set-graduation-package.webp",
       "detailImages": [

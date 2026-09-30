@@ -9,6 +9,7 @@ import { replaceCatalog } from '../../api/_lib/catalogWrite';
 import { localDatabaseKey, type Database } from '../../api/_lib/db';
 import type { ApiRequest, ApiResponse } from '../../api/_lib/http';
 import { seedDatabase } from '../../api/_lib/seed';
+import defaultCatalog from '../../data/defaults/catalog.json';
 import defaultPayment from '../../data/defaults/payment.json';
 import { createPgliteDatabase } from '../../scripts/local-api';
 import type { CatalogData } from '../../src/domain';
@@ -30,8 +31,11 @@ const order = (items: unknown[]) => call(orders, {
   headers: {},
   body: { requestId: `00000000-0000-4000-8000-${String(++requestNumber).padStart(12, '0')}`, items, expectedPayment: defaultPayment },
 });
+const priceOf = (id: string) => defaultCatalog.products.find((product) => product.id === id)!.price;
+const graduationPrice = priceOf('set-graduation-package');
+const classSetPrice = priceOf('set-class-h02');
 const doll = (value: string, quantity = 1) => ({
-  productId: 'set-graduation-package', quantity, capturedUnitPrice: 60000, selectedOptions: [{ name: '인형', value }],
+  productId: 'set-graduation-package', quantity, capturedUnitPrice: graduationPrice, selectedOptions: [{ name: '인형', value }],
 });
 
 beforeAll(async () => {
@@ -50,9 +54,9 @@ describe('database-backed API', () => {
   });
 
   it('stores each option line and reads the order back with its choices', async () => {
-    const created = await order([doll('단우'), doll('상민'), { productId: 'set-class-h02', quantity: 1, capturedUnitPrice: 32000 }]);
+    const created = await order([doll('단우'), doll('상민'), { productId: 'set-class-h02', quantity: 1, capturedUnitPrice: classSetPrice }]);
     expect(created.status).toBe(200);
-    expect(created.body.total).toBe(152000);
+    expect(created.body.total).toBe(graduationPrice * 2 + classSetPrice);
 
     const read = await call(orders, { method: 'GET', headers: {}, url: `/api/orders?orderNumber=${created.body.orderNumber}` });
     expect(read.body.items.map(({ selectedOptions }: { selectedOptions?: unknown }) => selectedOptions)).toEqual([
@@ -61,10 +65,10 @@ describe('database-backed API', () => {
   });
 
   it.each([
-    ['a missing choice', [{ productId: 'set-graduation-package', quantity: 1, capturedUnitPrice: 60000 }]],
+    ['a missing choice', [{ productId: 'set-graduation-package', quantity: 1, capturedUnitPrice: graduationPrice }]],
     ['an unknown value', [doll('하이')]],
     ['a renamed option', [{ ...doll('단우'), selectedOptions: [{ name: '멤버', value: '단우' }] }]],
-    ['options on a product without them', [{ productId: 'set-class-h02', quantity: 1, capturedUnitPrice: 32000, selectedOptions: [{ name: '인형', value: '단우' }] }]],
+    ['options on a product without them', [{ productId: 'set-class-h02', quantity: 1, capturedUnitPrice: classSetPrice, selectedOptions: [{ name: '인형', value: '단우' }] }]],
     ['a product total above its maximum', [doll('단우', 2), doll('상민', 1)]],
   ])('asks for checkout review for %s', async (_label, items) => {
     const result = await order(items);
