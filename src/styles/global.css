@@ -61,7 +61,55 @@ button,
   outline-offset: 3px;
 }
 
+/* Idle warning: a centered popup that stays inside the kiosk screen. */
+.idle-warning-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgb(25 55 95 / 45%);
+  animation: idle-warning-fade 0.2s ease-out;
+}
+
+.idle-warning {
+  display: grid;
+  gap: 0.75rem;
+  width: min(100%, 20rem);
+  padding: 1.5rem 1.25rem 1.25rem;
+  border-radius: 1.5rem;
+  color: var(--color-navy);
+  background: #fff;
+  box-shadow: 0 1rem 2.5rem rgb(25 55 95 / 25%);
+  text-align: center;
+  animation: idle-warning-pop 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.idle-warning strong { font-size: 1.15rem; }
+.idle-warning p { margin: 0; font-size: 0.95rem; }
+.idle-warning button {
+  min-height: 3.1rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  background: var(--color-blue);
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@keyframes idle-warning-fade { from { opacity: 0; } }
+@keyframes idle-warning-pop { from { opacity: 0; transform: scale(0.94); } }
+
 @media (min-aspect-ratio: 1 / 1) {
+  .idle-warning-backdrop {
+    right: auto;
+    left: 50%;
+    width: min(100vw, calc(100dvh * 9 / 16));
+    transform: translateX(-50%);
+  }
+
   .kiosk-frame {
     width: min(100vw, calc(100dvh * 9 / 16));
     min-height: 100dvh;

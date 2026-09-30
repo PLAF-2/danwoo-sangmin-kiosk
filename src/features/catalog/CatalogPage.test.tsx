@@ -123,13 +123,13 @@ describe('CatalogPage', () => {
     expect(screen.getByText('표시할 상품이 없습니다.')).toBeInTheDocument();
   });
 
-  it('confirms removal at quantity one and returns home with the cart cleared', async () => {
+  it('removes the last item without asking and returns home with the cart cleared', async () => {
     renderCatalog();
     await screen.findByText('앨범 상품');
     fireEvent.click(screen.getByRole('button', { name: '앨범 상품 담기' }));
 
     fireEvent.click(screen.getByRole('button', { name: '앨범 상품 수량 줄이기' }));
-    expect(window.confirm).toHaveBeenCalled();
+    expect(window.confirm).not.toHaveBeenCalled();
     const dock = screen.getByLabelText('내가 담은 굿즈');
     expect(dock).not.toHaveClass('cart-panel--open');
     // The last contents stay visible while the dock slides away instead of flashing an empty cart.
@@ -183,7 +183,7 @@ describe('CatalogPage', () => {
     expect(screen.getByText('선택한 상품 2개')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '졸업 패키지 (인형: 상민) 수량 줄이기' }));
-    expect(window.confirm).toHaveBeenCalledWith('졸업 패키지 (인형: 상민)을(를) 장바구니에서 뺄까요?');
+    expect(window.confirm).not.toHaveBeenCalled();
     expect(screen.queryByText('인형: 상민')).not.toBeInTheDocument();
     expect(screen.getByText('인형: 단우')).toBeInTheDocument();
   });

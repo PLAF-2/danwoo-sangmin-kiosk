@@ -24,8 +24,10 @@ describe('CustomerSessionBoundary', () => {
 
   it('warns after 75 seconds, then clears and returns home after 90 seconds', async () => {
     renderRoute(); await advance(0); await advance(75_000);
-    expect(screen.getByRole('dialog')).toHaveTextContent('15초 후 처음 화면으로 이동합니다.');
-    await advance(15_000);
+    expect(screen.getByRole('dialog', { name: '아직 이용 중이신가요?' })).toHaveTextContent('15초 후 처음 화면으로 이동합니다.');
+    await advance(5_000);
+    expect(screen.getByRole('dialog')).toHaveTextContent('10초 후 처음 화면으로 이동합니다.');
+    await advance(10_000);
     expect(useCartStore.getState().itemCount()).toBe(0);
     expect(screen.getByTestId('location')).toHaveTextContent('/');
   });

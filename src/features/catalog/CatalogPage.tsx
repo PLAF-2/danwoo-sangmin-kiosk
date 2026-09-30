@@ -62,7 +62,9 @@ function ProductCard({ product, onAdd, onOpen }: { product: Product; onAdd: () =
           }}
           type="button"
         >
-          +
+          <svg aria-hidden="true" height="18" viewBox="0 0 24 24" width="18">
+            <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2.8" />
+          </svg>
         </button>
       </div>
     </article>
@@ -184,15 +186,6 @@ export function CatalogPage() {
     }
   }
 
-  function decrease(key: string, label: string) {
-    const item = cart.items[key];
-    if (!item) return;
-    if (item.quantity === 1) {
-      if (window.confirm(`${label}을(를) 장바구니에서 뺄까요?`)) cart.remove(key);
-      return;
-    }
-    cart.decrement(key);
-  }
 
   function addProduct(product: Product) {
     if (product.options?.length) setOptionProduct(product);
@@ -239,7 +232,7 @@ export function CatalogPage() {
             <div className="cart-line" key={key}>
               <img alt="" onError={(event) => { event.currentTarget.src = ''; }} src={toKioskMediaUrl(product.thumbnailImage)} />
               <span className="cart-line__name">{product.name}{options && <small>{options}</small>}</span>
-              <button aria-label={`${label} 수량 줄이기`} onClick={() => decrease(key, label)} type="button">−</button>
+              <button aria-label={`${label} 수량 줄이기`} onClick={() => cart.decrement(key)} type="button">−</button>
               <b>{item.quantity}</b>
               <button aria-label={`${label} 수량 늘리기`} onClick={() => cart.increment(key, product.maxQuantity)} type="button">+</button>
               <span>{won(item.quantity * item.capturedUnitPrice)}</span>
