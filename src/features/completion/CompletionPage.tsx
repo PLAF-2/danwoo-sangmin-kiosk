@@ -13,8 +13,17 @@ const paymentLabels = { instant: '즉시 완료', bankQr: '계좌·QR 안내', s
 const won = (amount: number) => `${amount.toLocaleString('ko-KR')}원`;
 // The designed image already carries the logo and the "결제가 완료되었습니다" message.
 const completeImageUrl = '/images/complete-kiosk.webp';
-// Web orders use UUIDs; the first 8 characters are enough to read out at the counter.
-const displayOrderNumber = (orderNumber: string) => (orderNumber.length > 16 ? orderNumber.slice(0, 8).toUpperCase() : orderNumber);
+// Customers see a short pickup number from 1 to 300 instead of the stored order id. It is
+// derived from the id (FNV-1a hash) so it looks random but stays the same on reload.
+// Two orders can share a number, which is acceptable for the demo kiosk.
+export function displayOrderNumber(orderNumber: string): number {
+  let hash = 2166136261;
+  for (const character of orderNumber) {
+    hash ^= character.codePointAt(0)!;
+    hash = Math.imul(hash, 16777619);
+  }
+  return ((hash >>> 0) % 300) + 1;
+}
 
 export function CompletionPage() {
   const api = useKioskApi();

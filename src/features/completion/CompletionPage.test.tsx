@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCartStore } from '../../domain/cart/cartStore';
 import { useSessionStore } from '../../domain/session/sessionStore';
 import { createAppSettings, createOrder, createPaymentSettings, createProduct } from '../../test/fixtures';
-import { CompletionPage } from './CompletionPage';
+import { CompletionPage, displayOrderNumber } from './CompletionPage';
 
 const read = vi.fn();
 
@@ -36,15 +36,25 @@ describe('CompletionPage', () => {
     read.mockResolvedValue(createOrder({ paymentMode, status: paymentMode === 'bankQr' ? 'received' : 'paid' }));
     renderCompletion(); await advance(0);
     expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
-    expect(screen.getByText('20260926-0001')).toBeInTheDocument();
+    expect(screen.getByText(String(displayOrderNumber('20260926-0001')))).toBeInTheDocument();
+    expect(screen.queryByText('20260926-0001')).not.toBeInTheDocument();
     expect(screen.getByText('25,000원')).toBeInTheDocument();
     expect(screen.getByText('카운터에서 주문 번호를 보여주세요.')).toBeInTheDocument();
     expect(read).toHaveBeenCalledWith('20260926-0001');
   });
-  it('shows the designed image and a short order number for long web order ids', async () => {
-    read.mockResolvedValue(createOrder({ orderNumber: '3d2aaca5-43e0-4e7b-8441-16c3f7fc3b21' }));
-    renderCompletion('3d2aaca5-43e0-4e7b-8441-16c3f7fc3b21'); await advance(0);
-    expect(screen.getByText('3D2AACA5')).toBeInTheDocument();
+  it('turns order ids into stable pickup numbers from 1 to 300', () => {
+    const ids = Array.from({ length: 500 }, (_, index) => crypto.randomUUID?.() ?? `order-${index}`);
+    const numbers = ids.map(displayOrderNumber);
+    expect(numbers.every((number) => Number.isInteger(number) && number >= 1 && number <= 300)).toBe(true);
+    expect(new Set(numbers).size).toBeGreaterThan(150);
+    expect(displayOrderNumber(ids[0]!)).toBe(numbers[0]);
+  });
+
+  it('shows the designed image and the pickup number for a web order id', async () => {
+    const orderNumber = '3d2aaca5-43e0-4e7b-8441-16c3f7fc3b21';
+    read.mockResolvedValue(createOrder({ orderNumber }));
+    renderCompletion(orderNumber); await advance(0);
+    expect(screen.getByText(String(displayOrderNumber(orderNumber)))).toBeInTheDocument();
     expect(document.querySelector('.completion-background')).toHaveAttribute('src', '/images/complete-kiosk.webp');
   });
   it('shows a safe missing-order state that returns home', async () => {
