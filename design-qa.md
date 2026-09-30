@@ -14,8 +14,8 @@
 **Required Fidelity Surfaces**
 
 - Fonts and typography: deep navy brand label and bounded card text preserve readable one-line price treatment within the framed kiosk.
-- Spacing and layout rhythm: rounded cards and a two-column grid use consistent spacing; the cart uses an 18vh/minimum 10rem bottom dock so the catalogue stays visible while the order action remains persistent.
-- Colors and visual tokens: cream canvas, white merchandise surfaces, cobalt actions and navy order dock match the selected concept's direction.
+- Spacing and layout rhythm: rounded cards and a two-column grid use consistent spacing; the cart uses a 21vh/minimum 11rem bottom dock, with the selected item and its quantity controls on their own visible row.
+- Colors and visual tokens: white canvas, white merchandise surfaces, cobalt actions and navy order dock create the cleaner version of the selected concept.
 - Image quality and asset fidelity: real, administrator-managed product images are retained instead of replacing live catalog data with generated mock assets.
 - Copy and content: only functional controls remain in the customer flow; no search or menu actions were added.
 
@@ -24,6 +24,7 @@
 - [P1 fixed] Initial landscape capture scaled card typography from viewport-width units and wrapped a price. Replaced those sizes with kiosk-safe values, then captured the live catalog again.
 - [P1 fixed] The first redesign used a tall cart panel rather than the selected visual's bottom bar. Rebuilt it as a compact dock with selected-item summary, quantity controls, total and primary purchase action.
 - [P2 fixed] The compact home control wrapped on the narrow framed layout. Added a no-wrap constraint and increased its reserved column slightly.
+- [P1 fixed] The cream canvas and horizontal cart strip hid quantity controls behind scrolling. Switched the customer canvas to white and rebuilt the dock into stacked, non-scrolling item and checkout sections.
 
 **Findings**
 

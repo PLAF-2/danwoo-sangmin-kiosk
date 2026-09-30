@@ -91,7 +91,12 @@ describe('CatalogPage', () => {
     renderCatalog();
     await screen.findByText('앨범 상품');
 
+    fireEvent.click(screen.getByRole('button', { name: '앨범 상품 담기' }));
+
     expect(screen.getByLabelText('내가 담은 굿즈')).toHaveClass('cart-panel--dock');
+    expect(screen.getByTestId('cart-scroll')).toHaveClass('cart-dock__items');
+    expect(screen.getByRole('button', { name: '앨범 상품 수량 줄이기' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '앨범 상품 수량 늘리기' })).toBeVisible();
   });
 
   it('shows a fallback message for an active category without products', async () => {

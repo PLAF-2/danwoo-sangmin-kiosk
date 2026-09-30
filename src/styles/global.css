@@ -18,7 +18,7 @@ body,
 html {
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--color-cream);
+  background: #fff;
   overscroll-behavior: none;
   touch-action: manipulation;
 }
@@ -27,7 +27,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   color: var(--color-navy);
-  background: var(--color-cream);
+  background: #fff;
   font-family: var(--font-family-sans);
   line-height: 1.5;
   text-rendering: optimizeLegibility;
