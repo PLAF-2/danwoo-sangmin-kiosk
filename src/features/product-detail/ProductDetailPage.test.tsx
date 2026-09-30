@@ -23,7 +23,11 @@ function renderPage(productId = product.id) {
 
   render(
     <MemoryRouter initialEntries={[`/products/${productId}`]}>
-      <Routes><Route path="/products/:productId" element={<ProductDetailPage />} /></Routes>
+      <Routes>
+        <Route path="/products/:productId" element={<ProductDetailPage />} />
+        <Route path="/shop" element={<div>상품 목록</div>} />
+        <Route path="/checkout" element={<div>결제</div>} />
+      </Routes>
       <LocationProbe />
     </MemoryRouter>,
   );
@@ -55,7 +59,7 @@ describe('ProductDetailPage', () => {
     expect(screen.getByTestId('product-total')).toHaveTextContent('24,000원');
   });
 
-  it('adds to the cart without leaving the page and merges on buy now', async () => {
+  it('returns to the catalog after adding the selected quantity', async () => {
     Object.defineProperty(window, 'kiosk', {
       configurable: true,
       value: { catalog: { read: vi.fn().mockResolvedValue(createCatalogData({ products: [createProduct({ ...product, maxQuantity: 5 })] })) } },
@@ -65,12 +69,17 @@ describe('ProductDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '수량 늘리기' }));
     fireEvent.click(screen.getByRole('button', { name: '장바구니 담기' }));
-    expect(screen.getByTestId('location')).toHaveTextContent('/products/detail-product');
-    expect(screen.getByText('장바구니에 담았습니다.')).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/shop');
+    expect(useCartStore.getState().items['detail-product']?.quantity).toBe(2);
+  });
 
+  it('merges the selected quantity when buying now', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: '상세 상품' });
+    fireEvent.click(screen.getByRole('button', { name: '수량 늘리기' }));
     fireEvent.click(screen.getByRole('button', { name: '바로 구매' }));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/checkout'));
-    expect(useCartStore.getState().items['detail-product']?.quantity).toBe(4);
+    expect(useCartStore.getState().items['detail-product']?.quantity).toBe(2);
   });
 
   it('blocks sold-out products and explains unavailable products', async () => {

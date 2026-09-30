@@ -60,6 +60,7 @@ describe('ProcessingPage', () => {
     expect(screen.getByRole('heading', { name: '결제를 처리하고 있어요' })).toBeInTheDocument();
     expect(screen.getByText('HIGHEST')).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveClass('processing-page');
+    expect(screen.getByTestId('processing-loading-mark')).toBeInTheDocument();
     expect(create).not.toHaveBeenCalled();
     await advance(processingSeconds * 1000 - 1);
     expect(create).not.toHaveBeenCalled();

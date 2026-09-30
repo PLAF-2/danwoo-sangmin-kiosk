@@ -27,12 +27,12 @@
 .checkout-actions button { min-width: 0; padding: .5rem; font-size: .85rem; white-space: nowrap; }
 .checkout-actions .checkout-submit { color: #fff; background: var(--color-blue); font-weight: 800; }
 .checkout-page button:disabled { opacity: .45; cursor: default; }
-.processing-page { display: grid; grid-template-rows: auto 1fr; min-height: 100dvh; padding: var(--space-4); color: var(--color-navy); background: linear-gradient(#fff, var(--color-cream)); text-align: center; }
-.processing-brand { font-family: var(--font-family-display); color: var(--color-blue); font-size: clamp(1.5rem, 5vw, 3rem); letter-spacing: .08em; }
-.processing-content { align-self: center; display: grid; justify-items: center; gap: var(--space-4); padding: var(--space-4) 0; }
-.processing-content h1 { margin: 0; font-size: clamp(1.25rem, 4vw, 2.5rem); }
-.processing-content p { margin: 0; }
-.processing-star { color: var(--color-blue); font-size: clamp(5rem, 20vw, 12rem); line-height: 1; animation: processing-spin 3s linear infinite; }
+.processing-page { display: grid; grid-template-rows: auto 1fr; min-height: 100dvh; padding: 1.25rem; color: var(--color-navy); background: #fff; text-align: center; }
+.processing-brand { font-family: var(--font-family-display); color: var(--color-navy); font-size: 1.85rem; letter-spacing: .1em; }
+.processing-content { align-self: center; display: grid; justify-items: center; gap: .85rem; padding: 1rem 0; }
+.processing-content h1 { margin: 0; font-size: 1.25rem; line-height: 1.25; white-space: nowrap; }
+.processing-content p { margin: 0; color: #526174; font-size: .9rem; }
+.processing-loading-mark { width: 3.5rem; aspect-ratio: 1; border: .32rem solid #e8eef6; border-top-color: var(--color-blue); border-radius: 50%; animation: processing-spin .9s linear infinite; }
 .processing-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
 .processing-actions button { min-width: var(--touch-target-min, 48px); min-height: var(--touch-target-min, 48px); padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-pill); color: var(--color-navy); background: var(--color-mist); cursor: pointer; }
 .processing-actions button:first-child { color: #fff; background: var(--color-blue); font-weight: 800; }

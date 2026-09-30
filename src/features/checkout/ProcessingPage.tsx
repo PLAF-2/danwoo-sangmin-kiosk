@@ -81,7 +81,7 @@ export function ProcessingPage() {
             <button onClick={retry} type="button">다시 시도</button>
             {failure.confirmedFailed && <button onClick={() => navigate('/shop')} type="button">장바구니로</button>}
           </div>
-        </> : <p role="status">잠시만 기다려 주세요.</p>}
+        </> : <><span aria-hidden="true" className="processing-loading-mark" data-testid="processing-loading-mark" /><p role="status">잠시만 기다려 주세요.</p></>}
       </section>
     </main>
   );

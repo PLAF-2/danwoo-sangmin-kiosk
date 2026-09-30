@@ -55,7 +55,6 @@ export function ProductDetailPage() {
   const [catalog, setCatalog] = useState<CatalogData | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [galleryIndex, setGalleryIndex] = useState(0);
-  const [feedback, setFeedback] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -85,7 +84,7 @@ export function ProductDetailPage() {
   function addToCart() {
     if (soldOut) return;
     cart.add(product, quantity);
-    setFeedback('장바구니에 담았습니다.');
+    navigate('/shop', { state: location.state });
   }
 
   function buyNow() {
@@ -135,7 +134,6 @@ export function ProductDetailPage() {
           <button aria-label="수량 늘리기" disabled={quantity >= product.maxQuantity || soldOut} onClick={() => setQuantity((value) => Math.min(product.maxQuantity, value + 1))} type="button">+</button>
         </div>
         <div className="product-detail-total"><span>합계</span><strong data-testid="product-total">{won(product.price * quantity)}</strong></div>
-        {feedback && <p role="status" className="product-feedback">{feedback}</p>}
         <div className="product-detail-actions">
           <button disabled={soldOut} onClick={addToCart} type="button">장바구니 담기</button>
           <button disabled={soldOut} onClick={buyNow} type="button">바로 구매</button>
