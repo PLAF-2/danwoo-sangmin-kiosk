@@ -1,6 +1,8 @@
 .checkout-page { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; min-height: 100dvh; height: 100dvh; padding: 1.25rem; gap: .9rem; background: #fff; }
-.checkout-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.checkout-header strong { font-family: var(--font-family-display); color: var(--color-navy); font-size: 1.85rem; letter-spacing: .1em; }
+.checkout-header { display: grid; grid-template-columns: 4rem 1fr 4rem; align-items: center; }
+.checkout-header strong { font-family: var(--font-family-display); color: var(--color-navy); font-size: 1.85rem; letter-spacing: .1em; text-align: center; }
+.checkout-header .checkout-back { display: grid; place-items: center; justify-self: start; width: 2.75rem; min-width: 0; height: 2.75rem; min-height: 0; padding: 0; border-radius: 50%; color: var(--color-navy); background: #f1f3f5; }
+.checkout-header .checkout-back:active { background: var(--color-mist); }
 .checkout-page h1 { margin: 0; padding: .2rem 0; text-align: center; font-size: 1.2rem; line-height: 1.25; }
 .checkout-page button { min-width: var(--touch-target-min, 48px); min-height: var(--touch-target-min, 48px); padding: var(--space-2) var(--space-4); border: 0; border-radius: var(--radius-pill); color: var(--color-navy); background: var(--color-mist); cursor: pointer; }
 .checkout-items { min-height: 0; overflow-y: auto; -ms-overflow-style: none; padding-right: .15rem; scrollbar-width: none; }
@@ -24,7 +26,7 @@
 .checkout-bank img { width: 100%; aspect-ratio: 1; object-fit: contain; }
 .checkout-bank dl { display: grid; gap: var(--space-1); }
 .checkout-alert { color: #b42318; overflow-wrap: anywhere; }
-.checkout-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: .6rem; }
+.checkout-actions { display: grid; }
 .checkout-actions button { min-width: 0; padding: .5rem; font-size: .85rem; white-space: nowrap; }
 .checkout-actions .checkout-submit { color: #fff; background: var(--color-blue); font-weight: 800; }
 .checkout-page button:disabled { opacity: .45; cursor: default; }

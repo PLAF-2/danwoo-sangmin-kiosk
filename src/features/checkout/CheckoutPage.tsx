@@ -124,7 +124,11 @@ export function CheckoutPage() {
   return (
     <main className="checkout-page">
       <header className="checkout-header">
-        <button onClick={returnToShop} type="button">← 장바구니</button>
+        <button aria-label="장바구니로 돌아가기" className="checkout-back" onClick={returnToShop} type="button">
+          <svg aria-hidden="true" height="20" viewBox="0 0 24 24" width="20">
+            <path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.6" />
+          </svg>
+        </button>
         <strong>HIGHEST</strong>
       </header>
       <h1>주문 내용을 확인해 주세요</h1>
@@ -169,7 +173,6 @@ export function CheckoutPage() {
         {loadError && <div role="alert">주문 정보를 불러오지 못했습니다. <button onClick={() => setAttempt((value) => value + 1)} type="button">다시 불러오기</button></div>}
         {alert && <p className="checkout-alert" role="alert">{alert}</p>}
         <div className="checkout-actions">
-          <button onClick={returnToShop} type="button">주문 수정하기</button>
           {payment && <button className="checkout-submit" disabled={loading || loadError || pending || items.length === 0} onClick={() => { void submit(); }} type="button">
             {priceReview && paymentReview ? '변경 내용 확인하고 계속'
               : priceReview ? '변경 금액 확인하고 계속'

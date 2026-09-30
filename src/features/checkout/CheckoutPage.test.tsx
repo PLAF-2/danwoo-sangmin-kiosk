@@ -115,11 +115,12 @@ describe('CheckoutPage', () => {
     expect(screen.getByText('장바구니가 비어 있습니다.')).toBeInTheDocument();
   });
 
-  it.each(['← 장바구니', '주문 수정하기'])('returns to the shop with %s without changing the cart', async (label) => {
+  it('returns to the shop with the back button without changing the cart', async () => {
     const items = useCartStore.getState().items;
     renderCheckout();
     await ready();
-    fireEvent.click(screen.getByRole('button', { name: label }));
+    expect(screen.queryByRole('button', { name: '주문 수정하기' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '장바구니로 돌아가기' }));
     expect(screen.getByTestId('location')).toHaveTextContent('/shop');
     expect(useCartStore.getState().items).toBe(items);
   });
@@ -317,7 +318,7 @@ describe('CheckoutPage', () => {
     let resolveCatalog!: (catalog: CatalogData) => void;
     catalogRead.mockImplementationOnce(() => new Promise((resolve) => { resolveCatalog = resolve; }));
     fireEvent.click(button);
-    fireEvent.click(screen.getByRole('button', { name: '← 장바구니' }));
+    fireEvent.click(screen.getByRole('button', { name: '장바구니로 돌아가기' }));
     await act(async () => resolveCatalog(createCatalogData()));
     expect(screen.getByTestId('location')).toHaveTextContent('/shop');
     expect(crypto.randomUUID).not.toHaveBeenCalled();
