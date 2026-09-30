@@ -119,8 +119,10 @@ export function ProductDetailPage() {
         </div>
         <div className="product-detail-copy">
           <p className="product-detail-eyebrow">CLOUD ACADEMY GOODS</p>
-          <h1>{product.name}</h1>
-          <strong className="product-detail-price">{won(product.price)}</strong>
+          <div className="product-detail-title-price" data-testid="product-title-price">
+            <h1>{product.name}</h1>
+            <strong className="product-detail-price">{won(product.price)}</strong>
+          </div>
           {soldOut && <p className="product-detail-sold-out">품절</p>}
           <p>{product.description || '상품 설명이 준비 중입니다.'}</p>
           <dl className="product-specifications">

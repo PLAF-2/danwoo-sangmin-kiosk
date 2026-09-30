@@ -59,6 +59,14 @@ describe('ProductDetailPage', () => {
     expect(screen.getByTestId('product-total')).toHaveTextContent('24,000원');
   });
 
+  it('groups the product name and price in a single detail row', async () => {
+    renderPage();
+
+    const summary = await screen.findByTestId('product-title-price');
+    expect(summary).toContainElement(screen.getByRole('heading', { name: '상세 상품' }));
+    expect(summary).toHaveTextContent('12,000원');
+  });
+
   it('returns to the catalog after adding the selected quantity', async () => {
     Object.defineProperty(window, 'kiosk', {
       configurable: true,
