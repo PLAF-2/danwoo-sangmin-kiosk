@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useKioskApi } from '../../app/providers';
 
+import defaultCatalog from '../../../data/defaults/catalog.json';
 import type { CatalogData, Product, ProductOption, ProductSpecification } from '../../domain';
+import { catalogDataSchema } from '../../domain/schemas';
 import { SquareImagePicker } from './SquareImagePicker';
 
 type ProductDraft = Omit<Product, 'specifications' | 'options'> & { specificationText: string; optionText: string };
@@ -60,6 +62,12 @@ export function ProductAdmin() {
       setError(cause instanceof Error ? cause.message : '저장하지 못했습니다.');
       return false;
     }
+  };
+
+  // Loads the planned goods shipped in data/defaults; their images are served from /images.
+  const loadDefaultGoods = async () => {
+    if (!window.confirm('카테고리와 상품을 기본 굿즈 목록으로 모두 바꿀까요? 주문과 화면·결제 설정은 그대로 남습니다.')) return;
+    await persist(catalogDataSchema.parse(defaultCatalog), '기본 굿즈를 불러왔습니다.');
   };
 
   const startNew = () => {
@@ -149,7 +157,10 @@ export function ProductAdmin() {
     <section className="admin-page">
       <header className="admin-page-header">
         <div><p className="admin-eyebrow">CATALOG FLIGHT LOG</p><h1>상품 관리</h1></div>
-        <button type="button" onClick={startNew}>상품 추가</button>
+        <div className="admin-actions">
+          <button type="button" onClick={() => void loadDefaultGoods()}>기본 굿즈 불러오기</button>
+          <button type="button" onClick={startNew}>상품 추가</button>
+        </div>
       </header>
       {message && <p role="status">{message}</p>}
       {error && <p role="alert">{error}</p>}

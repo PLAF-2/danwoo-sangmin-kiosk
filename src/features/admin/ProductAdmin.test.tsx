@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import defaultCatalog from '../../../data/defaults/catalog.json';
 import { createCatalogData, createCategory, createProduct } from '../../test/fixtures';
 import { ProductAdmin } from './ProductAdmin';
 
@@ -111,6 +112,19 @@ describe('product administration', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('옵션 이름이 중복되었습니다.');
     expect(save).not.toHaveBeenCalled();
+  });
+
+  it('replaces the catalog with the shipped goods only after confirmation', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+    render(<ProductAdmin />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '기본 굿즈 불러오기' }));
+    expect(save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '기본 굿즈 불러오기' }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledWith(defaultCatalog));
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText('졸업 패키지')).toBeInTheDocument();
   });
 
   it('clones, hides with confirmation, and marks products sold out', async () => {

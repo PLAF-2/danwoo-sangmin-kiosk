@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:vercel": "tsx scripts/setup-db.ts --if-database && vite build",
     "preview": "vite preview",
     "db:setup": "tsx scripts/setup-db.ts",
     "db:reset-catalog": "tsx scripts/setup-db.ts --reset-catalog",

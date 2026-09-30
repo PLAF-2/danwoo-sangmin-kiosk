@@ -10,6 +10,7 @@ describe('Vercel web deployment', () => {
     const ignore = readFileSync(resolve(process.cwd(), '.gitignore'), 'utf8');
     expect(pkg.scripts.dev).toBe('vite');
     expect(pkg.scripts.build).toBe('vite build');
+    expect(pkg.scripts['build:vercel']).toBe('tsx scripts/setup-db.ts --if-database && vite build');
     expect(pkg.scripts['test:e2e']).toBe('playwright test');
     expect(webE2eConfig.testMatch).toBe('web-persistence.spec.ts');
     expect(webE2eConfig.webServer).toBeUndefined();
@@ -21,7 +22,7 @@ describe('Vercel web deployment', () => {
   it('builds the web app and rewrites non-API routes to the SPA', () => {
     const config = JSON.parse(readFileSync(resolve(process.cwd(), 'vercel.json'), 'utf8'));
 
-    expect(config.buildCommand).toBe('npm run build');
+    expect(config.buildCommand).toBe('npm run build:vercel');
     expect(config.devCommand).toBe('npm run dev');
     expect(config.outputDirectory).toBe('dist');
     expect(config.rewrites).toContainEqual({

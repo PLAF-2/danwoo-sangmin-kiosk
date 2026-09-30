@@ -21,7 +21,8 @@ npm run dev
 | 명령 | 동작 |
 |---|---|
 | `npm run dev` | 화면 + 로컬 API 개발 서버 실행 |
-| `npm run build` | Vercel용 정적 파일을 `dist/`에 빌드 |
+| `npm run build` | 정적 파일을 `dist/`에 빌드 |
+| `npm run build:vercel` | Vercel 빌드 명령. `DATABASE_URL`이 있으면 `db:setup`을 먼저 실행한 뒤 빌드 |
 | `npm run db:setup` | `DATABASE_URL`의 DB에 schema 적용(반복 실행 가능) + 빈 DB면 기본 데이터·초기 관리자 설치 |
 | `npm run db:reset-catalog` | `db:setup` 후 카테고리·상품을 `data/defaults/catalog.json`으로 교체(주문·설정·비밀번호는 유지) |
 | `npm run lint` | 전체 저장소 ESLint 검사 |
@@ -43,11 +44,11 @@ npm run dev
 "options": [{ "name": "인형", "values": ["단우", "상민"] }]
 ```
 
-관리자 화면의 상품 수정 창에서는 한 줄에 `옵션명:값1,값2` 형식으로 입력합니다.
+관리자 화면의 상품 수정 창에서는 한 줄에 `옵션명:값1,값2` 형식으로 입력합니다. 상품 관리 화면의 **기본 굿즈 불러오기** 버튼은 카테고리·상품을 이 `catalog.json` 내용으로 한 번에 교체합니다(주문, 화면·결제 설정은 유지).
 
 ## Vercel 배포
 
-저장소 루트를 Vercel 프로젝트에 연결합니다. `vercel.json`은 `npm run build`, 출력 `dist/`, `/api`를 제외한 SPA 경로 재작성을 지정합니다. 빌드에는 DB나 Blob 비밀값이 필요하지 않지만, 실제 실행에는 아래 리소스가 필요합니다.
+저장소 루트를 Vercel 프로젝트에 연결합니다. `vercel.json`은 `npm run build:vercel`, 출력 `dist/`, `/api`를 제외한 SPA 경로 재작성을 지정합니다. 실제 실행에는 아래 리소스가 필요합니다.
 
 1. [Vercel Marketplace의 Neon](https://vercel.com/marketplace/neon/neon)을 연결하고 Postgres DB를 만듭니다. 프로젝트 환경 변수의 `DATABASE_URL`이 해당 DB 연결 문자열인지 확인합니다.
 2. 프로젝트에 **Public** [Vercel Blob 스토어](https://vercel.com/docs/vercel-blob)를 연결하고 `BLOB_READ_WRITE_TOKEN`을 설정합니다. 업로드된 이미지는 공개 HTTPS URL로 표시하므로 Private 스토어는 사용할 수 없습니다.
@@ -57,19 +58,13 @@ npm run dev
 
 ### DB 준비와 업그레이드
 
-schema와 seed는 배포 빌드와 분리되어 있어 매 배포마다 실행되지 않습니다. 새 DB를 만들었거나 schema가 바뀐 코드를 배포하기 **전에** 해당 DB에 한 번 실행합니다.
+배포할 때마다 Vercel 빌드가 그 환경의 `DATABASE_URL`로 [`scripts/setup-db.ts`](scripts/setup-db.ts)를 먼저 실행합니다. 이 스크립트는 `api/schema.sql`을 문장별로 적용합니다. 모든 문장이 `IF NOT EXISTS`라서 기존 DB에 반복 실행해도 데이터가 지워지지 않고, 필요한 컬럼(예: 옵션 기능의 `products.options`, `order_items.selected_options`)만 추가됩니다. 그 다음 DB가 비어 있을 때만 기본 카테고리·상품·설정을 넣고, 관리자 자격 증명이 없을 때만 초기 비밀번호 `admin0000`의 scrypt 해시를 만듭니다. 첫 로그인 후 `/admin/system`에서 비밀번호를 바꾸십시오. DB에 연결할 수 없으면 빌드가 실패하므로 깨진 배포가 올라가지 않습니다.
+
+이미 판매 데이터가 있는 DB의 상품 목록을 기본 굿즈로 바꾸려면 배포 후 관리자 **상품 관리 → 기본 굿즈 불러오기**를 누릅니다. 같은 작업을 명령으로 하려면 다음을 실행합니다.
 
 ```bash
 npx vercel link
 npx vercel env pull .env.local
-node --env-file=.env.local --import=tsx scripts/setup-db.ts
-```
-
-`scripts/setup-db.ts`는 `api/schema.sql`을 문장별로 적용합니다. 모든 문장이 `IF NOT EXISTS`라서 기존 DB에 다시 실행해도 데이터가 지워지지 않고, 옵션 기능에 필요한 `products.options`, `order_items.selected_options` 컬럼만 추가됩니다. 그 다음 DB가 비어 있을 때만 기본 카테고리·상품·설정을 넣고, 관리자 자격 증명이 없을 때만 초기 비밀번호 `admin0000`의 scrypt 해시를 만듭니다. 첫 로그인 후 `/admin/system`에서 비밀번호를 바꾸십시오.
-
-이미 판매 데이터가 있는 DB의 상품 목록을 `data/defaults/catalog.json`으로 바꾸려면 `--reset-catalog`를 붙입니다. 카테고리·상품·상세 이미지만 교체하고 주문, 웰컴·결제 설정, 관리자 비밀번호는 그대로 둡니다.
-
-```bash
 node --env-file=.env.local --import=tsx scripts/setup-db.ts --reset-catalog
 ```
 
