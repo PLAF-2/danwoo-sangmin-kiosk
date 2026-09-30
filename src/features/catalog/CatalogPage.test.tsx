@@ -139,6 +139,26 @@ describe('CatalogPage', () => {
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/'));
   });
 
+  it('asks inside the kiosk before leaving with items and only clears the cart when confirmed', async () => {
+    renderCatalog();
+    await screen.findByText('앨범 상품');
+    fireEvent.click(screen.getByRole('button', { name: '앨범 상품 담기' }));
+
+    fireEvent.click(screen.getByRole('button', { name: '처음으로' }));
+    const dialog = screen.getByRole('dialog', { name: '처음 화면으로 갈까요?' });
+    expect(dialog).toHaveTextContent('담은 상품 1개가 장바구니에서 모두 빠집니다.');
+    expect(window.confirm).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: '계속 쇼핑하기' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(useCartStore.getState().itemCount()).toBe(1);
+    expect(screen.getByTestId('location')).toHaveTextContent('/shop');
+
+    fireEvent.click(screen.getByRole('button', { name: '처음으로' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '처음으로' }));
+    expect(useCartStore.getState().itemCount()).toBe(0);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/));
+  });
+
   it('keeps catalog scrolling hidden and cart scrolling visible, including an image fallback', async () => {
     renderCatalog();
     const image = await screen.findByAltText('포토북 상품');

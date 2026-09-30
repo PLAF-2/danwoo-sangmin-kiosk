@@ -11,7 +11,8 @@ export function CustomerSessionBoundary() {
   const [settings, setSettings] = useState({ idleTimeoutSeconds: 90, idleWarningSeconds: 15 });
   const [warning, setWarning] = useState(false);
   const [remaining, setRemaining] = useState(0);
-  const paused = location.pathname === '/processing' || location.pathname.startsWith('/admin');
+  // The welcome screen is where an idle session ends up, so it never counts down (and closes any open warning).
+  const paused = location.pathname === '/' || location.pathname === '/processing' || location.pathname.startsWith('/admin');
 
   useEffect(() => { void api.settings.read().then(({ idleTimeoutSeconds, idleWarningSeconds }) => setSettings({ idleTimeoutSeconds, idleWarningSeconds })).catch(() => {}); }, [api]);
   useEffect(() => {
@@ -37,8 +38,8 @@ export function CustomerSessionBoundary() {
     <div className="kiosk-frame">
       <Outlet />
       {warning && (
-        <div className="idle-warning-backdrop" role="presentation">
-          <div aria-labelledby="idle-warning-title" aria-modal="true" className="idle-warning" role="dialog">
+        <div className="kiosk-dialog-backdrop" role="presentation">
+          <div aria-labelledby="idle-warning-title" aria-modal="true" className="kiosk-dialog" role="dialog">
             <strong id="idle-warning-title">아직 이용 중이신가요?</strong>
             <p>{remaining}초 후 처음 화면으로 이동합니다.</p>
             <button onClick={() => window.dispatchEvent(new Event('pointerdown'))} type="button">계속 이용하기</button>

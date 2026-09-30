@@ -134,6 +134,7 @@ export function CatalogPage() {
   const [catalog, setCatalog] = useState<CatalogData | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState(returnState?.categoryId ?? allCategoryId);
   const [optionProduct, setOptionProduct] = useState<Product | null>(null);
+  const [confirmingHome, setConfirmingHome] = useState(false);
   const cart = useCartStore();
 
   useEffect(() => {
@@ -179,11 +180,14 @@ export function CatalogPage() {
   }, [cart, cartLines, cartOpen]);
   const shownDock = cartOpen ? { lines: cartLines, count: cart.itemCount(), subtotal: cart.subtotal() } : dock;
 
+  function goHome() {
+    cart.clear();
+    navigate('/');
+  }
+
   function leaveForHome() {
-    if (cart.itemCount() === 0 || window.confirm('장바구니를 비우고 처음으로 갈까요?')) {
-      cart.clear();
-      navigate('/');
-    }
+    if (cart.itemCount() === 0) goHome();
+    else setConfirmingHome(true);
   }
 
 
@@ -244,6 +248,24 @@ export function CatalogPage() {
           <button disabled={!cartOpen} onClick={() => navigate('/checkout')} type="button">구매하러 가기</button>
         </footer>
       </section>
+      {confirmingHome && (
+        <div className="kiosk-dialog-backdrop" onClick={() => setConfirmingHome(false)} role="presentation">
+          <div
+            aria-labelledby="leave-home-title"
+            aria-modal="true"
+            className="kiosk-dialog"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <strong id="leave-home-title">처음 화면으로 갈까요?</strong>
+            <p>담은 상품 {cart.itemCount()}개가 장바구니에서 모두 빠집니다.</p>
+            <div className="kiosk-dialog-actions">
+              <button className="kiosk-dialog-secondary" onClick={() => setConfirmingHome(false)} type="button">계속 쇼핑하기</button>
+              <button onClick={goHome} type="button">처음으로</button>
+            </div>
+          </div>
+        </div>
+      )}
       {optionProduct && (
         <OptionPicker
           onCancel={() => setOptionProduct(null)}

@@ -29,14 +29,20 @@ describe('CustomerSessionBoundary', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('10초 후 처음 화면으로 이동합니다.');
     await advance(10_000);
     expect(useCartStore.getState().itemCount()).toBe(0);
-    expect(screen.getByTestId('location')).toHaveTextContent('/');
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await advance(120_000);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
   it('restarts the timer when the customer continues', async () => {
     renderRoute(); await advance(0); await advance(75_000); fireEvent.click(screen.getByRole('button', { name: '계속 이용하기' }));
     await advance(74_999); expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await advance(1); expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
-  it('does not idle-reset processing or admin paths', async () => {
+  it('does not idle-reset the welcome, processing or admin paths', async () => {
+    const welcome = renderRoute('/'); await advance(0); await advance(120_000);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(useCartStore.getState().itemCount()).toBe(1);
+    welcome.unmount();
     const view = renderRoute('/processing'); await advance(0); await advance(120_000);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(useCartStore.getState().itemCount()).toBe(1);
     view.unmount(); renderRoute('/admin/products'); await advance(0); await advance(120_000);
