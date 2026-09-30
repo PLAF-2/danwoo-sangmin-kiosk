@@ -195,7 +195,11 @@ export function CatalogPage() {
   return (
     <main className="catalog-page">
       <header className="catalog-header">
-        <button aria-label="처음으로" onClick={leaveForHome} type="button">처음으로</button>
+        <button aria-label="처음으로" className="catalog-home" onClick={leaveForHome} type="button">
+          <svg aria-hidden="true" height="22" viewBox="0 0 24 24" width="22">
+            <path d="M3 10.6 12 3l9 7.6V20a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z" fill="currentColor" />
+          </svg>
+        </button>
         <strong>HIGHEST</strong>
       </header>
       <nav aria-label="상품 카테고리" className="category-tabs">
