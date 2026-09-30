@@ -24,6 +24,7 @@
 .checkout-bank dl { display: grid; gap: var(--space-1); }
 .checkout-alert { color: #b42318; overflow-wrap: anywhere; }
 .checkout-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: .6rem; }
+.checkout-actions button { min-width: 0; padding: .5rem; font-size: .85rem; white-space: nowrap; }
 .checkout-actions .checkout-submit { color: #fff; background: var(--color-blue); font-weight: 800; }
 .checkout-page button:disabled { opacity: .45; cursor: default; }
 .processing-page { display: grid; grid-template-rows: auto 1fr; min-height: 100dvh; padding: var(--space-4); color: var(--color-navy); background: linear-gradient(#fff, var(--color-cream)); text-align: center; }
