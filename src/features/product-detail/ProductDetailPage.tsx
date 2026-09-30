@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useKioskApi } from '../../app/providers';
 
@@ -10,6 +10,15 @@ import './product-detail.css';
 
 const fallbackImage = toKioskMediaUrl('images/product-fallback.svg');
 const won = (amount: number) => `${new Intl.NumberFormat('ko-KR').format(amount)}원`;
+const swipeThreshold = 40;
+
+function Chevron({ direction }: { direction: 'left' | 'right' }) {
+  return (
+    <svg aria-hidden="true" height="20" viewBox="0 0 24 24" width="20">
+      <path d={direction === 'left' ? 'M15 5 8 12l7 7' : 'm9 5 7 7-7 7'} fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.6" />
+    </svg>
+  );
+}
 
 function resolveProduct(catalog: CatalogData, productId: string | undefined) {
   const product = catalog.products.find(({ id }) => id === productId);
@@ -55,6 +64,8 @@ export function ProductDetailPage() {
   const [catalog, setCatalog] = useState<CatalogData | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const swipeStart = useRef<number | null>(null);
+  const thumbnails = useRef<HTMLDivElement>(null);
   const [choices, setChoices] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -70,6 +81,10 @@ export function ProductDetailPage() {
     [catalog, productId],
   );
 
+  useEffect(() => {
+    thumbnails.current?.children[galleryIndex]?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }, [galleryIndex]);
+
   if (!result) return <main className="product-detail-page product-detail-state"><p>상품을 불러오는 중입니다.</p></main>;
   if (result.status === 'missing') return <StateMessage heading="상품을 찾을 수 없습니다." detail="요청한 상품이 존재하지 않습니다." />;
   if (result.status === 'hidden') return <StateMessage heading="현재 판매하지 않는 상품입니다." detail="상품 목록에서 판매 중인 상품을 확인해 주세요." />;
@@ -77,6 +92,7 @@ export function ProductDetailPage() {
   const product: Product = result.product;
   const soldOut = product.saleStatus === 'soldOut';
   const images = [product.thumbnailImage, ...product.detailImages];
+  const showImage = (offset: number) => setGalleryIndex((index) => (index + offset + images.length) % images.length);
   const options = product.options ?? [];
   const optionsChosen = options.every(({ name }) => Object.hasOwn(choices, name));
   const selectedOptions = options.map(({ name }) => ({ name, value: choices[name] ?? '' }));
@@ -101,13 +117,30 @@ export function ProductDetailPage() {
   return (
     <main className="product-detail-page">
       <header className="product-detail-header">
-        <button aria-label="상품 목록으로" onClick={goBack} type="button">‹ 목록</button>
+        <button aria-label="상품 목록으로" className="product-detail-back" onClick={goBack} type="button"><Chevron direction="left" /></button>
         <strong>HIGHEST</strong>
       </header>
       <section className="product-detail-card" aria-label="상품 상세">
         <div className="product-gallery" aria-label="상품 이미지 갤러리">
-          <ProductImage alt={`${product.name} 이미지 ${galleryIndex + 1}`} className="product-detail-image" src={images[galleryIndex] ?? product.thumbnailImage} />
-          <div className="product-gallery__controls">
+          <div
+            className="product-gallery__stage"
+            onPointerDown={(event) => { swipeStart.current = event.clientX; }}
+            onPointerUp={(event) => {
+              const distance = swipeStart.current === null ? 0 : event.clientX - swipeStart.current;
+              swipeStart.current = null;
+              if (images.length > 1 && Math.abs(distance) >= swipeThreshold) showImage(distance < 0 ? 1 : -1);
+            }}
+          >
+            <ProductImage alt={`${product.name} 이미지 ${galleryIndex + 1}`} className="product-detail-image" src={images[galleryIndex] ?? product.thumbnailImage} />
+            {images.length > 1 && (
+              <>
+                <button aria-label="이전 이미지" className="product-gallery__arrow product-gallery__arrow--prev" onClick={() => showImage(-1)} type="button"><Chevron direction="left" /></button>
+                <button aria-label="다음 이미지" className="product-gallery__arrow product-gallery__arrow--next" onClick={() => showImage(1)} type="button"><Chevron direction="right" /></button>
+                <span className="product-gallery__count">{galleryIndex + 1} / {images.length}</span>
+              </>
+            )}
+          </div>
+          <div className="product-gallery__controls" ref={thumbnails}>
             {images.map((image, index) => (
               <button
                 aria-label={`상품 이미지 ${index + 1}`}

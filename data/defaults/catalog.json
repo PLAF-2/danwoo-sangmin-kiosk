@@ -574,7 +574,12 @@
       "price": 43000,
       "categoryId": "sets",
       "thumbnailImage": "images/set-admission-package.webp",
-      "detailImages": [],
+      "detailImages": [
+        "images/album-cloud-academy.webp",
+        "images/photocard-random-pack.webp",
+        "images/keyring-highest-logo-front.webp",
+        "images/keyring-highest-logo-back.webp"
+      ],
       "description": "1st Mini Album 『CLOUD ACADEMY』와 랜덤 포토카드 팩, 하이스트 로고 키링을 함께 담은 입학 패키지입니다.",
       "specifications": [
         {
@@ -595,7 +600,16 @@
       "price": 32000,
       "categoryId": "sets",
       "thumbnailImage": "images/set-class-h02.webp",
-      "detailImages": [],
+      "detailImages": [
+        "images/keyring-danwoo-front.webp",
+        "images/keyring-danwoo-back.webp",
+        "images/keyring-sangmin-front.webp",
+        "images/keyring-sangmin-back.webp",
+        "images/photocard-student-id-danwoo-front.webp",
+        "images/photocard-student-id-danwoo-back.webp",
+        "images/photocard-student-id-sangmin-front.webp",
+        "images/photocard-student-id-sangmin-back.webp"
+      ],
       "description": "단우 키링과 상민 키링, STUDENT ID 포토카드 2장(단우·상민)으로 구성된 CLASS H-02 세트입니다.",
       "specifications": [
         {
@@ -616,7 +630,13 @@
       "price": 60000,
       "categoryId": "sets",
       "thumbnailImage": "images/set-graduation-package.webp",
-      "detailImages": [],
+      "detailImages": [
+        "images/album-highest-day.webp",
+        "images/doll-danwoo-front.webp",
+        "images/doll-danwoo-back.webp",
+        "images/doll-sangmin-front.webp",
+        "images/doll-sangmin-back.webp"
+      ],
       "description": "Special Album 『HIGHEST DAY』와 인형 1종으로 구성된 졸업 패키지입니다. 인형은 단우·상민 중 하나를 고를 수 있습니다.",
       "specifications": [
         {

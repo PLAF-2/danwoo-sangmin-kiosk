@@ -112,6 +112,40 @@ describe('ProductDetailPage', () => {
     expect(await screen.findByRole('heading', { name: '상품을 찾을 수 없습니다.' })).toBeInTheDocument();
   });
 
+  it('moves through every image with arrows and swipes, wrapping at both ends', async () => {
+    // jsdom has no PointerEvent, so swipe coordinates would otherwise be dropped.
+    vi.stubGlobal('PointerEvent', class extends MouseEvent {});
+    renderPage();
+    await screen.findByAltText('상세 상품 이미지 1');
+    expect(screen.getByText('1 / 3')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '이전 이미지' }));
+    expect(screen.getByAltText('상세 상품 이미지 3')).toHaveAttribute('src', '/images/detail-two.png');
+    fireEvent.click(screen.getByRole('button', { name: '다음 이미지' }));
+    expect(screen.getByText('1 / 3')).toBeInTheDocument();
+
+    const stage = screen.getByAltText('상세 상품 이미지 1').parentElement!;
+    fireEvent.pointerDown(stage, { clientX: 200 });
+    fireEvent.pointerUp(stage, { clientX: 120 });
+    expect(screen.getByAltText('상세 상품 이미지 2')).toHaveAttribute('src', '/images/detail-one.png');
+    expect(screen.getByRole('button', { name: '상품 이미지 2' })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.pointerDown(stage, { clientX: 200 });
+    fireEvent.pointerUp(stage, { clientX: 190 });
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('hides the arrows when a product has a single image', async () => {
+    Object.defineProperty(window, 'kiosk', {
+      configurable: true,
+      value: { catalog: { read: vi.fn().mockResolvedValue(createCatalogData({ products: [createProduct({ ...product, detailImages: [] })] })) } },
+    });
+    renderPage();
+    await screen.findByAltText('상세 상품 이미지 1');
+    expect(screen.queryByRole('button', { name: '다음 이미지' })).not.toBeInTheDocument();
+  });
+
   it('uses the brand fallback when an image fails', async () => {
     renderPage();
     const image = await screen.findByAltText('상세 상품 이미지 1');
