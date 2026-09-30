@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useKioskApi } from '../../app/providers';
 
-import type { CatalogData, Product, ProductSpecification } from '../../domain';
+import type { CatalogData, Product, ProductOption, ProductSpecification } from '../../domain';
 import { SquareImagePicker } from './SquareImagePicker';
 
-type ProductDraft = Omit<Product, 'specifications'> & { specificationText: string };
+type ProductDraft = Omit<Product, 'specifications' | 'options'> & { specificationText: string; optionText: string };
 
 const specificationsToText = (items: ProductSpecification[]) =>
   items.map(({ label, value }) => `${label}:${value}`).join('\n');
@@ -15,6 +15,20 @@ const textToSpecifications = (value: string): ProductSpecification[] =>
     .map((line) => line.split(':', 2).map((part) => part.trim()))
     .filter((parts): parts is [string, string] => parts.length === 2 && parts.every(Boolean))
     .map(([label, itemValue]) => ({ label, value: itemValue }));
+
+const optionsToText = (options: ProductOption[] = []) =>
+  options.map(({ name, values }) => `${name}:${values.join(',')}`).join('\n');
+
+const textToOptions = (value: string): ProductOption[] =>
+  value
+    .split('\n')
+    .map((line) => line.split(':', 2).map((part) => part.trim()))
+    .filter((parts): parts is [string, string] => parts.length === 2 && parts.every(Boolean))
+    .map(([name, values]) => ({
+      name,
+      values: [...new Set(values.split(',').map((item) => item.trim()).filter(Boolean))],
+    }))
+    .filter(({ values }) => values.length > 0);
 
 export function ProductAdmin() {
   const api = useKioskApi();
@@ -63,6 +77,7 @@ export function ProductAdmin() {
       detailImages: [],
       description: '',
       specificationText: '',
+      optionText: '',
       saleStatus: 'onSale',
       isVisible: true,
       displayOrder: catalog.products.length,
@@ -73,7 +88,8 @@ export function ProductAdmin() {
   };
 
   const edit = (product: Product) => {
-    setDraft({ ...product, specificationText: specificationsToText(product.specifications) });
+    const { options, ...rest } = product;
+    setDraft({ ...rest, specificationText: specificationsToText(product.specifications), optionText: optionsToText(options) });
   };
 
   const saveProduct = async (event: FormEvent) => {
@@ -83,12 +99,19 @@ export function ProductAdmin() {
       setError('대표 이미지를 선택해 주세요.');
       return;
     }
+    const { specificationText, optionText, ...rest } = draft;
+    const options = textToOptions(optionText);
+    const optionNames = options.map(({ name }) => name);
+    if (new Set(optionNames).size !== optionNames.length) {
+      setError('옵션 이름이 중복되었습니다.');
+      return;
+    }
     const product: Product = {
-      ...draft,
-      specifications: textToSpecifications(draft.specificationText),
+      ...rest,
+      specifications: textToSpecifications(specificationText),
+      ...(options.length > 0 && { options }),
       updatedAt: new Date().toISOString(),
     };
-    delete (product as Product & { specificationText?: string }).specificationText;
     const exists = catalog.products.some(({ id }) => id === product.id);
     const products = exists
       ? catalog.products.map((item) => item.id === product.id ? product : item)
@@ -182,6 +205,8 @@ export function ProductAdmin() {
               <label className="admin-wide">설명<textarea value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></label>
               <label className="admin-wide">상세 정보<textarea aria-describedby="spec-help" value={draft.specificationText} onChange={(e) => setDraft({ ...draft, specificationText: e.target.value })} /></label>
               <small id="spec-help" className="admin-wide">한 줄에 `항목:내용` 형식으로 입력하세요.</small>
+              <label className="admin-wide">선택 옵션<textarea aria-describedby="option-help" value={draft.optionText} onChange={(e) => setDraft({ ...draft, optionText: e.target.value })} /></label>
+              <small id="option-help" className="admin-wide">한 줄에 `옵션명:값1,값2` 형식으로 입력하세요. 예: `인형:단우,상민`. 비워 두면 옵션 없이 판매합니다.</small>
             </div>
             <div className="admin-media-row">
               <SquareImagePicker buttonLabel="대표 이미지 선택" onSaved={(path) => setDraft({ ...draft, thumbnailImage: path })} />

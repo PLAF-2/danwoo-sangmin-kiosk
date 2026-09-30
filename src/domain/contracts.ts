@@ -52,6 +52,33 @@ export const productSpecificationSchema = z
   .strict();
 export type ProductSpecification = z.infer<typeof productSpecificationSchema>;
 
+export const productOptionSchema = z
+  .object({
+    name: nonEmptyString,
+    values: z.array(nonEmptyString).min(1),
+  })
+  .strict()
+  .refine(({ values }) => new Set(values).size === values.length, {
+    message: 'duplicate option values are not allowed',
+    path: ['values'],
+  });
+export type ProductOption = z.infer<typeof productOptionSchema>;
+
+export const productOptionsSchema = z
+  .array(productOptionSchema)
+  .min(1)
+  .refine((options) => new Set(options.map(({ name }) => name)).size === options.length, {
+    message: 'duplicate option names are not allowed',
+  });
+
+export const selectedOptionSchema = z
+  .object({
+    name: nonEmptyString,
+    value: nonEmptyString,
+  })
+  .strict();
+export type SelectedOption = z.infer<typeof selectedOptionSchema>;
+
 export const productSchema = z
   .object({
     id: nonEmptyString,
@@ -62,6 +89,8 @@ export const productSchema = z
     detailImages: z.array(imageReferenceSchema),
     description: z.string(),
     specifications: z.array(productSpecificationSchema),
+    // Omitted for products without choices so existing catalogs stay valid.
+    options: productOptionsSchema.optional(),
     saleStatus: saleStatusSchema,
     isVisible: z.boolean(),
     displayOrder: nonNegativeInteger,
@@ -82,6 +111,8 @@ export const cartItemSchema = z
     productId: nonEmptyString,
     quantity: z.number().int().min(1),
     capturedUnitPrice: money,
+    // Present only for products with options, in the product's option order.
+    selectedOptions: z.array(selectedOptionSchema).min(1).optional(),
   })
   .strict();
 export type CartItem = z.infer<typeof cartItemSchema>;

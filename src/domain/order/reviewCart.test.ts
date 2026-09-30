@@ -55,4 +55,28 @@ describe('reviewCart', () => {
     expect(review.blockers).toEqual(['HORIZON Album은(는) 최대 5개까지 구매할 수 있습니다.']);
     expect(review.lines).toEqual([{ item, product, lineTotal: 150000 }]);
   });
+
+  it('blocks lines whose selected options no longer match the product', () => {
+    const product = createProduct({ options: [{ name: '인형', values: ['단우', '상민'] }] });
+    const valid = createCartItem({ selectedOptions: [{ name: '인형', value: '단우' }] });
+    const stale = createCartItem({ selectedOptions: [{ name: '인형', value: '하이' }] });
+    const review = reviewCart([valid, stale, createCartItem()], createCatalogData({ products: [product] }));
+
+    expect(review.blockers).toEqual([
+      'HORIZON Album의 옵션이 변경되었습니다. 장바구니에서 다시 선택해 주세요.',
+      'HORIZON Album의 옵션이 변경되었습니다. 장바구니에서 다시 선택해 주세요.',
+    ]);
+    expect(review.lines).toEqual([{ item: valid, product, lineTotal: 25000 }]);
+  });
+
+  it('applies the maximum to all option lines of the same product together', () => {
+    const product = createProduct({ maxQuantity: 3, options: [{ name: '인형', values: ['단우', '상민'] }] });
+    const review = reviewCart([
+      createCartItem({ quantity: 2, selectedOptions: [{ name: '인형', value: '단우' }] }),
+      createCartItem({ quantity: 2, selectedOptions: [{ name: '인형', value: '상민' }] }),
+    ], createCatalogData({ products: [product] }));
+
+    expect(review.blockers).toEqual(['HORIZON Album은(는) 최대 3개까지 구매할 수 있습니다.']);
+    expect(review.lines).toHaveLength(2);
+  });
 });

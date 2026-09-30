@@ -34,7 +34,7 @@ describe('seedDatabase', () => {
     const rows = (table: string) => db.inserts.filter(({ text }) => text.includes(`INSERT INTO ${table} `));
     expect(rows('categories').map(({ values }) => values[0])).toEqual(catalog.categories.map(({ id }) => id));
     expect(rows('products').map(({ values }) => values[0])).toEqual(catalog.products.map(({ id }) => id));
-    expect(rows('product_detail_images')).toHaveLength(1);
+    expect(rows('product_detail_images')).toHaveLength(catalog.products.flatMap(({ detailImages }) => detailImages).length);
     expect(rows('app_settings')[0]?.values).toEqual([JSON.stringify(settings)]);
     expect(rows('payment_settings')[0]?.values).toEqual([JSON.stringify(payment)]);
     const credentials = rows('admin_credentials');

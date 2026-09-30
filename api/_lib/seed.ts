@@ -7,7 +7,7 @@ import settings from '../../data/defaults/settings.json';
 import type { Database } from './db';
 
 const insertCategory = `INSERT INTO categories (id, name, is_active, display_order) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING`;
-const insertProduct = `INSERT INTO products (id, category_id, name, price, thumbnail_image, description, specifications, sale_status, is_visible, display_order, max_quantity, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13) ON CONFLICT (id) DO NOTHING`;
+const insertProduct = `INSERT INTO products (id, category_id, name, price, thumbnail_image, description, specifications, options, sale_status, is_visible, display_order, max_quantity, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, $11, $12, $13, $14) ON CONFLICT (id) DO NOTHING`;
 const insertDetailImage = `INSERT INTO product_detail_images (product_id, display_order, image_url) VALUES ($1, $2, $3) ON CONFLICT (product_id, display_order) DO NOTHING`;
 const insertSettings = `INSERT INTO app_settings (data) VALUES ($1::jsonb) ON CONFLICT (id) DO NOTHING`;
 const insertPayment = `INSERT INTO payment_settings (data) VALUES ($1::jsonb) ON CONFLICT (id) DO NOTHING`;
@@ -29,7 +29,7 @@ export async function seedDatabase(db: Database): Promise<void> {
       queries.push(db.query(insertCategory, [category.id, category.name, category.isActive, category.displayOrder]));
     }
     for (const product of catalog.products) {
-      queries.push(db.query(insertProduct, [product.id, product.categoryId, product.name, product.price, product.thumbnailImage, product.description, JSON.stringify(product.specifications), product.saleStatus, product.isVisible, product.displayOrder, product.maxQuantity, product.createdAt, product.updatedAt]));
+      queries.push(db.query(insertProduct, [product.id, product.categoryId, product.name, product.price, product.thumbnailImage, product.description, JSON.stringify(product.specifications), product.options ? JSON.stringify(product.options) : null, product.saleStatus, product.isVisible, product.displayOrder, product.maxQuantity, product.createdAt, product.updatedAt]));
       for (const [displayOrder, imageUrl] of product.detailImages.entries()) {
         queries.push(db.query(insertDetailImage, [product.id, displayOrder, imageUrl]));
       }

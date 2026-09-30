@@ -5,6 +5,7 @@ import { useKioskApi } from '../../app/providers';
 import { useCartStore } from '../../domain/cart/cartStore';
 import type { CatalogData, PaymentSettings } from '../../domain/contracts';
 import { reviewCart } from '../../domain/order/reviewCart';
+import { cartLineKey, formatSelectedOptions } from '../../domain/productOptions';
 import { toKioskMediaUrl } from '../../services/kioskApi';
 
 import './checkout.css';
@@ -131,11 +132,13 @@ export function CheckoutPage() {
         {loading ? <p role="status">주문 정보를 불러오는 중입니다.</p> : items.length === 0 ? <p>장바구니가 비어 있습니다.</p> : items.map((item) => {
           const product = catalog?.products.find(({ id }) => id === item.productId);
           const change = priceAnnotations.find(({ productId }) => productId === item.productId);
+          const options = formatSelectedOptions(item.selectedOptions);
           return (
-            <article className="checkout-line" key={item.productId}>
+            <article className="checkout-line" key={cartLineKey(item)}>
               {product ? <img alt={product.name} src={toKioskMediaUrl(product.thumbnailImage)} /> : <span className="checkout-thumbnail">상품 확인 필요</span>}
               <div>
                 <strong>{product?.name ?? item.productId}</strong>
+                {options && <span className="checkout-options">{options}</span>}
                 <span>수량 {item.quantity}개</span>
                 {change && <span className="checkout-price-change">{won(change.before)} → {won(change.after)}</span>}
               </div>

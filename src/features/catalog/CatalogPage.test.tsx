@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -140,5 +140,44 @@ describe('CatalogPage', () => {
     expect(image).toHaveAttribute('src', '');
     expect(screen.getByTestId('catalog-scroll')).toHaveClass('catalog-scroll');
     expect(screen.getByTestId('cart-scroll')).toHaveClass('cart-scroll');
+  });
+
+  it('asks for every option before adding and keeps each choice on its own cart line', async () => {
+    window.kiosk.catalog.read = vi.fn().mockResolvedValue(createCatalogData({
+      categories: [createCategory({ id: 'sets', name: '세트' })],
+      products: [createProduct({
+        id: 'graduation',
+        name: '졸업 패키지',
+        categoryId: 'sets',
+        price: 60_000,
+        maxQuantity: 2,
+        options: [{ name: '인형', values: ['단우', '상민'] }],
+      })],
+    }));
+    renderCatalog();
+    fireEvent.click(await screen.findByRole('button', { name: '졸업 패키지 담기' }));
+
+    const dialog = screen.getByRole('dialog', { name: '졸업 패키지' });
+    expect(within(dialog).getByRole('button', { name: '장바구니에 담기' })).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole('button', { name: '취소' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('장바구니가 비어 있습니다.')).toBeInTheDocument();
+
+    for (const member of ['단우', '상민']) {
+      fireEvent.click(screen.getByRole('button', { name: '졸업 패키지 담기' }));
+      fireEvent.click(screen.getByRole('button', { name: member }));
+      fireEvent.click(screen.getByRole('button', { name: '장바구니에 담기' }));
+    }
+
+    expect(screen.getByText('인형: 단우')).toBeInTheDocument();
+    expect(screen.getByText('인형: 상민')).toBeInTheDocument();
+    expect(screen.getByText('선택한 상품 2개')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '졸업 패키지 (인형: 단우) 수량 늘리기' }));
+    expect(screen.getByText('선택한 상품 2개')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '졸업 패키지 (인형: 상민) 수량 줄이기' }));
+    expect(window.confirm).toHaveBeenCalledWith('졸업 패키지 (인형: 상민)을(를) 장바구니에서 뺄까요?');
+    expect(screen.queryByText('인형: 상민')).not.toBeInTheDocument();
+    expect(screen.getByText('인형: 단우')).toBeInTheDocument();
   });
 });

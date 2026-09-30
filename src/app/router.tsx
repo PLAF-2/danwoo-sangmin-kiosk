@@ -1,7 +1,6 @@
 import {
   Link,
   createBrowserRouter,
-  createHashRouter,
   createMemoryRouter,
   Outlet,
   type RouteObject,
@@ -78,9 +77,5 @@ export function createAppMemoryRouter(initialEntries: string[] = ['/']) {
 }
 
 export function createAppRouter() {
-  return createHashRouter(appRoutes);
-}
-
-export function createWebAppRouter() {
   return createBrowserRouter(appRoutes);
 }

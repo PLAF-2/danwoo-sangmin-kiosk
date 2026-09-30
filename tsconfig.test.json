@@ -1,15 +1,22 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node", "vitest/globals", "@testing-library/jest-dom"]
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node",
+      "vitest/globals",
+      "@testing-library/jest-dom"
+    ]
   },
   "include": [
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
     "src/test/**/*.ts",
     "src/global.d.ts",
-    "electron/**/*.test.ts",
     "api/**/*.test.ts",
     "tests/web-api/**/*.test.ts"
   ]

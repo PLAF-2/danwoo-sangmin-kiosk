@@ -6,39 +6,34 @@ import { ProductAdmin } from './ProductAdmin';
 
 const read = vi.fn();
 const save = vi.fn();
-const selectImage = vi.fn();
-const saveSquareCrop = vi.fn();
+const upload = vi.fn();
+const squareImage = (name: string) => new File(['image'], name, { type: 'image/png' });
 
 beforeEach(() => {
   Object.defineProperty(window, 'kiosk', {
     configurable: true,
     value: {
       catalog: { read, save },
-      media: { selectImage, saveSquareCrop },
+      media: { upload },
     },
   });
   read.mockReset().mockResolvedValue(createCatalogData());
   save.mockReset().mockResolvedValue(undefined);
-  selectImage.mockReset();
-  saveSquareCrop.mockReset();
+  upload.mockReset();
+  // Square images upload directly; cropping of other shapes is covered by WebMedia tests.
+  vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ width: 600, height: 600, close: vi.fn() }));
   vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('product administration', () => {
-  it('adds a product after saving a centered square image crop', async () => {
-    selectImage.mockResolvedValue({
-      selectionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      kind: 'square',
-      previewDataUrl: 'data:image/png;base64,AA==',
-      width: 800,
-      height: 600,
-    });
-    saveSquareCrop.mockResolvedValue('images/cropped.png');
+  it('adds a product after uploading its main image', async () => {
+    upload.mockResolvedValue('images/cropped.png');
     render(<ProductAdmin />);
 
     await screen.findByText('HORIZON Album');
@@ -47,17 +42,9 @@ describe('product administration', () => {
     fireEvent.change(screen.getByLabelText('가격'), { target: { value: '12000' } });
     fireEvent.change(screen.getByLabelText('최대 수량'), { target: { value: '3' } });
     fireEvent.change(screen.getByLabelText('상세 정보'), { target: { value: '구성:포토카드 2장' } });
-    fireEvent.click(screen.getByRole('button', { name: '대표 이미지 선택' }));
-    expect(await screen.findByRole('dialog', { name: '1:1 이미지 자르기' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '이 영역 사용' }));
+    fireEvent.change(screen.getByLabelText('대표 이미지 선택'), { target: { files: [squareImage('main.png')] } });
 
-    await waitFor(() => expect(saveSquareCrop).toHaveBeenCalledWith({
-      selectionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      x: 100,
-      y: 0,
-      width: 600,
-      height: 600,
-    }));
+    await waitFor(() => expect(screen.getByText('images/cropped.png')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: '상품 저장' }));
 
     await waitFor(() => expect(save).toHaveBeenCalled());
@@ -71,23 +58,15 @@ describe('product administration', () => {
     });
   });
 
-  it('edits order and max quantity and adds a cropped detail image', async () => {
-    selectImage.mockResolvedValue({
-      selectionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      kind: 'square',
-      previewDataUrl: 'data:image/png;base64,AA==',
-      width: 500,
-      height: 700,
-    });
-    saveSquareCrop.mockResolvedValue('images/detail.png');
+  it('edits order and max quantity and adds an uploaded detail image', async () => {
+    upload.mockResolvedValue('images/detail.png');
     render(<ProductAdmin />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'HORIZON Album 수정' }));
     fireEvent.change(screen.getByLabelText('표시 순서'), { target: { value: '7' } });
     fireEvent.change(screen.getByLabelText('최대 수량'), { target: { value: '2' } });
-    fireEvent.click(screen.getByRole('button', { name: '상세 이미지 추가' }));
-    fireEvent.click(await screen.findByRole('button', { name: '이 영역 사용' }));
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: '1:1 이미지 자르기' })).not.toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('상세 이미지 추가'), { target: { files: [squareImage('detail.png')] } });
+    await waitFor(() => expect(screen.getByText('2개')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: '상품 저장' }));
 
     await waitFor(() => expect(save).toHaveBeenCalled());
@@ -96,6 +75,42 @@ describe('product administration', () => {
       maxQuantity: 2,
       detailImages: ['images/horizon-album-detail.png', 'images/detail.png'],
     });
+  });
+
+  it('edits selectable options as one option per line and removes them when cleared', async () => {
+    render(<ProductAdmin />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'HORIZON Album 수정' }));
+    fireEvent.change(screen.getByLabelText('선택 옵션'), { target: { value: '인형: 단우, 상민, 단우\n포장:\n' } });
+    fireEvent.click(screen.getByRole('button', { name: '상품 저장' }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    const saved = save.mock.calls[0]?.[0].products[0];
+    expect(saved.options).toEqual([{ name: '인형', values: ['단우', '상민'] }]);
+    expect(saved).not.toHaveProperty('optionText');
+    expect(saved).not.toHaveProperty('specificationText');
+
+    read.mockResolvedValue(createCatalogData({ products: [saved] }));
+    cleanup();
+    render(<ProductAdmin />);
+    fireEvent.click(await screen.findByRole('button', { name: 'HORIZON Album 수정' }));
+    expect(screen.getByLabelText('선택 옵션')).toHaveValue('인형:단우,상민');
+    fireEvent.change(screen.getByLabelText('선택 옵션'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: '상품 저장' }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(save.mock.calls[1]?.[0].products[0]).not.toHaveProperty('options');
+  });
+
+  it('rejects duplicate option names', async () => {
+    render(<ProductAdmin />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'HORIZON Album 수정' }));
+    fireEvent.change(screen.getByLabelText('선택 옵션'), { target: { value: '인형:단우\n인형:상민' } });
+    fireEvent.click(screen.getByRole('button', { name: '상품 저장' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('옵션 이름이 중복되었습니다.');
+    expect(save).not.toHaveBeenCalled();
   });
 
   it('clones, hides with confirmation, and marks products sold out', async () => {

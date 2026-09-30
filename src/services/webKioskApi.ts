@@ -22,7 +22,6 @@ export function createWebKioskApi(fetcher: typeof fetch): KioskApi {
   const post = (path: string, body: unknown = {}) => request(path, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
-  const desktopOnly = async (): Promise<never> => { throw new Error('이 기능은 데스크톱 앱에서 사용할 수 있습니다.'); };
 
   return {
     catalog: {
@@ -46,13 +45,8 @@ export function createWebKioskApi(fetcher: typeof fetch): KioskApi {
         const result = await request('admin/media', { method: 'POST', body });
         return z.object({ url: z.url({ protocol: /^https$/iu }) }).parse(result).url;
       },
-      selectImage: desktopOnly,
-      saveSquareCrop: desktopOnly,
-      importSquareImage: desktopOnly,
-      importWelcomeImage: desktopOnly,
     },
     admin: {
-      supportsBackup: false,
       authenticate: async (password) => {
         try {
           await post('admin/login', { password });
@@ -65,8 +59,6 @@ export function createWebKioskApi(fetcher: typeof fetch): KioskApi {
       keepAlive: async () => { await post('admin/keep-alive'); },
       logout: async () => { await post('admin/logout'); },
       changePassword: async (currentPassword, nextPassword) => { await post('admin/password', { currentPassword, nextPassword }); },
-      exportBackup: desktopOnly,
-      importBackup: desktopOnly,
     },
   };
 }

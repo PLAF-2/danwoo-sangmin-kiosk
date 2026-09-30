@@ -86,13 +86,13 @@ export function WelcomeAdmin() {
     void api.settings.read().then(setSettings).catch((cause) => setError(String(cause)));
   }, [api]);
 
-  const upload = async (file?: File) => {
+  const upload = async (file: File) => {
     if (!settings) return;
     setError('');
     setUploading(true);
     try {
-      const path = file && api.media.upload ? await api.media.upload(file) : await api.media.importWelcomeImage();
-      if (path) setSettings((current) => current && ({ ...current, welcomeBackgroundImage: path }));
+      const path = await api.media.upload(file);
+      setSettings((current) => current && ({ ...current, welcomeBackgroundImage: path }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '이미지를 가져오지 못했습니다.');
     } finally {
@@ -140,7 +140,7 @@ export function WelcomeAdmin() {
         </div>
         <form className="admin-settings-form" onSubmit={(event) => void save(event)}>
           <div className="admin-actions">
-            {api.media.upload ? <label>배경 이미지 업로드<input
+            <label>배경 이미지 업로드<input
               accept="image/png,image/jpeg,image/webp"
               disabled={uploading}
               type="file"
@@ -149,7 +149,7 @@ export function WelcomeAdmin() {
                 if (file) void upload(file);
                 event.currentTarget.value = '';
               }}
-            /></label> : <button disabled={uploading} type="button" onClick={() => void upload()}>배경 이미지 업로드</button>}
+            /></label>
             {uploading && <p role="status">이미지 업로드 중…</p>}
             <button
               type="button"
@@ -224,7 +224,6 @@ export function SystemAdmin() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   const changePassword = async (event: FormEvent) => {
@@ -242,31 +241,10 @@ export function SystemAdmin() {
     }
   };
 
-  const exportBackup = async () => {
-    setError('');
-    try {
-      const path = await api.admin.exportBackup();
-      if (path) setMessage('백업을 저장했습니다.');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '백업을 저장하지 못했습니다.');
-    }
-  };
-
-  const importBackup = async () => {
-    if (!window.confirm('검증된 백업으로 현재 상품·설정·미디어를 교체할까요?')) return;
-    setError('');
-    try {
-      await api.admin.importBackup();
-      setMessage('백업을 가져왔습니다. 고객 화면을 다시 열면 반영됩니다.');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '백업을 가져오지 못했습니다.');
-    }
-  };
-
   return (
     <section className="admin-page">
       <header className="admin-page-header"><div><p className="admin-eyebrow">SYSTEM CONTROL</p><h1>시스템 관리</h1></div></header>
-      <Feedback error={error} message={message} />
+      <Feedback error={error} message="" />
       <div className="admin-system-grid">
         <form className="admin-panel admin-settings-form" onSubmit={(event) => void changePassword(event)}>
           <h2>관리자 비밀번호</h2>
@@ -275,14 +253,6 @@ export function SystemAdmin() {
           <label>새 비밀번호 확인<input autoComplete="new-password" minLength={8} required type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} /></label>
           <button type="submit">비밀번호 변경</button>
         </form>
-        {api.admin.supportsBackup !== false && <div className="admin-panel">
-          <h2>콘텐츠 백업</h2>
-          <p>카탈로그, 화면·결제 설정과 관리용 미디어를 하나의 검증 가능한 파일로 관리합니다.</p>
-          <div className="admin-actions">
-            <button type="button" onClick={() => void exportBackup()}>백업 내보내기</button>
-            <button className="danger" type="button" onClick={() => void importBackup()}>백업 가져오기</button>
-          </div>
-        </div>}
       </div>
     </section>
   );

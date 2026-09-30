@@ -2,16 +2,16 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: 'web-persistence.spec.ts',
-  outputDir: './test-results',
-  reporter: 'html',
+  testMatch: 'web-persistence.spec.ts',
+  outputDir: './test-results/web',
+  reporter: 'list',
+  workers: 1,
+  retries: 0,
+  timeout: 60_000,
   use: {
-    baseURL: 'http://127.0.0.1:5173',
-    trace: 'on-first-retry',
-  },
-  webServer: {
-    command: 'npm exec vite -- --config vite.renderer.config.ts --host 127.0.0.1 --port 5173',
-    url: 'http://127.0.0.1:5173',
-    reuseExistingServer: !process.env.CI,
+    baseURL: process.env.WEB_E2E_BASE_URL ?? 'http://localhost:3000',
+    browserName: 'chromium',
+    // Login requests contain the test password; do not record traces.
+    trace: 'off',
   },
 });

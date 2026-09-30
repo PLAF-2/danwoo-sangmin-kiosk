@@ -1,60 +1,644 @@
 {
   "categories": [
     {
-      "id": "albums",
-      "name": "앨범",
+      "id": "photocards",
+      "name": "포토카드",
       "isActive": true,
       "displayOrder": 0
     },
     {
-      "id": "goods",
-      "name": "굿즈",
+      "id": "keyrings",
+      "name": "키링",
       "isActive": true,
       "displayOrder": 1
+    },
+    {
+      "id": "dolls",
+      "name": "인형",
+      "isActive": true,
+      "displayOrder": 2
+    },
+    {
+      "id": "albums",
+      "name": "앨범",
+      "isActive": true,
+      "displayOrder": 3
+    },
+    {
+      "id": "sets",
+      "name": "세트",
+      "isActive": true,
+      "displayOrder": 4
     }
   ],
   "products": [
     {
-      "id": "horizon-album",
-      "name": "HORIZON Album",
-      "price": 25000,
-      "categoryId": "albums",
-      "thumbnailImage": "images/horizon-album.svg",
-      "detailImages": ["images/horizon-album-detail.svg"],
-      "description": "새로운 수평선을 담은 HIGHEST의 앨범입니다.",
+      "id": "photocard-student-id-danwoo",
+      "name": "STUDENT ID 포토카드 (단우)",
+      "price": 3000,
+      "categoryId": "photocards",
+      "thumbnailImage": "images/photocard-student-id-danwoo-front.webp",
+      "detailImages": [
+        "images/photocard-student-id-danwoo-back.webp"
+      ],
+      "description": "클라우드 아카데미 학생증 형식의 포토카드입니다. 뒷면에 학번·전공·배지가 담겨 있습니다.",
       "specifications": [
         {
           "label": "구성",
-          "value": "CD, 포토북"
+          "value": "포토카드 1장"
+        },
+        {
+          "label": "뒷면",
+          "value": "학번·전공·배지"
         }
       ],
       "saleStatus": "onSale",
       "isVisible": true,
       "displayOrder": 0,
       "maxQuantity": 5,
-      "createdAt": "2026-09-26T00:00:00.000Z",
-      "updatedAt": "2026-09-26T00:00:00.000Z"
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
     },
     {
-      "id": "horizon-keyring",
-      "name": "HORIZON Keyring",
-      "price": 12000,
-      "categoryId": "goods",
-      "thumbnailImage": "images/horizon-keyring.svg",
-      "detailImages": [],
-      "description": "HIGHEST 로고 키링입니다.",
+      "id": "photocard-student-id-sangmin",
+      "name": "STUDENT ID 포토카드 (상민)",
+      "price": 3000,
+      "categoryId": "photocards",
+      "thumbnailImage": "images/photocard-student-id-sangmin-front.webp",
+      "detailImages": [
+        "images/photocard-student-id-sangmin-back.webp"
+      ],
+      "description": "클라우드 아카데미 학생증 형식의 포토카드입니다. 뒷면에 학번·전공·배지가 담겨 있습니다.",
       "specifications": [
         {
-          "label": "소재",
-          "value": "아크릴"
+          "label": "구성",
+          "value": "포토카드 1장"
+        },
+        {
+          "label": "뒷면",
+          "value": "학번·전공·배지"
         }
       ],
       "saleStatus": "onSale",
       "isVisible": true,
       "displayOrder": 1,
+      "maxQuantity": 5,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "photocard-locker-selfie",
+      "name": "LOCKER SELFIE 포토카드",
+      "price": 3000,
+      "categoryId": "photocards",
+      "thumbnailImage": "images/photocard-locker-selfie-front.webp",
+      "detailImages": [
+        "images/photocard-locker-selfie-back.webp"
+      ],
+      "description": "Locker 02 앞에서 찍은 셀피 컷 포토카드입니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "포토카드 1장"
+        },
+        {
+          "label": "배경",
+          "value": "Locker 02"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 2,
+      "maxQuantity": 5,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "photocard-practice-class",
+      "name": "PRACTICE CLASS 포토카드",
+      "price": 3000,
+      "categoryId": "photocards",
+      "thumbnailImage": "images/photocard-practice-class-front.webp",
+      "detailImages": [
+        "images/photocard-practice-class-back.webp"
+      ],
+      "description": "구름 연습실에서 연습 중인 상민의 개인 컷 포토카드입니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "포토카드 1장"
+        },
+        {
+          "label": "멤버",
+          "value": "상민"
+        },
+        {
+          "label": "배경",
+          "value": "Cloud Practice Room"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 3,
+      "maxQuantity": 5,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "photocard-rooftop",
+      "name": "ROOFTOP 포토카드",
+      "price": 3000,
+      "categoryId": "photocards",
+      "thumbnailImage": "images/photocard-rooftop-front.webp",
+      "detailImages": [
+        "images/photocard-rooftop-back.webp"
+      ],
+      "description": "블루 루프탑 노을을 배경으로 한 단우의 개인 컷 포토카드입니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "포토카드 1장"
+        },
+        {
+          "label": "멤버",
+          "value": "단우"
+        },
+        {
+          "label": "배경",
+          "value": "Blue Rooftop"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 4,
+      "maxQuantity": 5,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "photocard-graduation-day",
+      "name": "GRADUATION DAY 포토카드",
+      "price": 5000,
+      "categoryId": "photocards",
+      "thumbnailImage": "images/photocard-graduation-day-front.webp",
+      "detailImages": [
+        "images/photocard-graduation-day-back.webp"
+      ],
+      "description": "하이스트 스테이지 졸업 무대를 담은 희귀 포토카드입니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "포토카드 1장"
+        },
+        {
+          "label": "등급",
+          "value": "희귀 카드"
+        },
+        {
+          "label": "배경",
+          "value": "Highest Stage"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 5,
+      "maxQuantity": 5,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "photocard-random-pack",
+      "name": "랜덤 포토카드 팩 (3장)",
+      "price": 8000,
+      "categoryId": "photocards",
+      "thumbnailImage": "images/photocard-random-pack.webp",
+      "detailImages": [],
+      "description": "전 종류 포토카드 중 3장이 랜덤으로 들어 있는 팩입니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "포토카드 3장"
+        },
+        {
+          "label": "구성 방식",
+          "value": "전 종류 중 랜덤"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 6,
+      "maxQuantity": 10,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "keyring-danwoo",
+      "name": "단우 키링",
+      "price": 15000,
+      "categoryId": "keyrings",
+      "thumbnailImage": "images/keyring-danwoo-front.webp",
+      "detailImages": [
+        "images/keyring-danwoo-back.webp"
+      ],
+      "description": "크림 교복에 태양 배지를 단 단우 키링입니다. 구름 모자를 탈부착할 수 있습니다.",
+      "specifications": [
+        {
+          "label": "배지",
+          "value": "태양"
+        },
+        {
+          "label": "특징",
+          "value": "구름 모자 탈부착"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 7,
       "maxQuantity": 3,
-      "createdAt": "2026-09-26T00:00:00.000Z",
-      "updatedAt": "2026-09-26T00:00:00.000Z"
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "keyring-sangmin",
+      "name": "상민 키링",
+      "price": 15000,
+      "categoryId": "keyrings",
+      "thumbnailImage": "images/keyring-sangmin-front.webp",
+      "detailImages": [
+        "images/keyring-sangmin-back.webp"
+      ],
+      "description": "크림 교복에 나침반 배지를 단 상민 키링입니다. 구름 모자를 탈부착할 수 있습니다.",
+      "specifications": [
+        {
+          "label": "배지",
+          "value": "나침반"
+        },
+        {
+          "label": "특징",
+          "value": "구름 모자 탈부착"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 8,
+      "maxQuantity": 3,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "keyring-couple-set",
+      "name": "자석 커플 키링 세트",
+      "price": 28000,
+      "categoryId": "keyrings",
+      "thumbnailImage": "images/keyring-couple-set-front.webp",
+      "detailImages": [
+        "images/keyring-couple-set-back.webp"
+      ],
+      "description": "두 키링의 손을 맞붙이면 별 모양이 완성되는 자석 커플 키링 세트입니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "단우·상민 키링 2개"
+        },
+        {
+          "label": "특징",
+          "value": "자석으로 붙이면 별 모양 완성"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 9,
+      "maxQuantity": 3,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "keyring-highest-logo",
+      "name": "하이스트 로고 키링",
+      "price": 18000,
+      "categoryId": "keyrings",
+      "thumbnailImage": "images/keyring-highest-logo-front.webp",
+      "detailImages": [
+        "images/keyring-highest-logo-back.webp"
+      ],
+      "description": "날개 달린 별 모양의 하이스트 공식 로고 메탈 키링입니다.",
+      "specifications": [
+        {
+          "label": "소재",
+          "value": "메탈"
+        },
+        {
+          "label": "디자인",
+          "value": "날개 달린 별 공식 로고"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 10,
+      "maxQuantity": 3,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "doll-danwoo",
+      "name": "단우 인형",
+      "price": 35000,
+      "categoryId": "dolls",
+      "thumbnailImage": "images/doll-danwoo-front.webp",
+      "detailImages": [
+        "images/doll-danwoo-back.webp"
+      ],
+      "description": "교복을 입은 단우 봉제 인형입니다. 스쿨백에 담아 포장됩니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "봉제 인형"
+        },
+        {
+          "label": "포장",
+          "value": "스쿨백"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 11,
+      "maxQuantity": 2,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "doll-sangmin",
+      "name": "상민 인형",
+      "price": 35000,
+      "categoryId": "dolls",
+      "thumbnailImage": "images/doll-sangmin-front.webp",
+      "detailImages": [
+        "images/doll-sangmin-back.webp"
+      ],
+      "description": "교복을 입은 상민 봉제 인형입니다. 스쿨백에 담아 포장됩니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "봉제 인형"
+        },
+        {
+          "label": "포장",
+          "value": "스쿨백"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 12,
+      "maxQuantity": 2,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "doll-uniform-set",
+      "name": "인형 교복 세트",
+      "price": 18000,
+      "categoryId": "dolls",
+      "thumbnailImage": "images/doll-uniform-set-front.webp",
+      "detailImages": [
+        "images/doll-uniform-set-back.webp"
+      ],
+      "description": "크림 블루종과 블루 넥타이로 구성된 인형 교체용 교복 세트입니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "크림 블루종, 블루 넥타이"
+        },
+        {
+          "label": "용도",
+          "value": "인형 교체용 의상"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 13,
+      "maxQuantity": 2,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "doll-mini-locker",
+      "name": "미니 사물함 (인형 보관함)",
+      "price": 25000,
+      "categoryId": "dolls",
+      "thumbnailImage": "images/doll-mini-locker-front.webp",
+      "detailImages": [
+        "images/doll-mini-locker-back.webp"
+      ],
+      "description": "Locker 02 모양으로 만든 인형 보관 상자입니다.",
+      "specifications": [
+        {
+          "label": "디자인",
+          "value": "Locker 02"
+        },
+        {
+          "label": "용도",
+          "value": "인형 보관"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 14,
+      "maxQuantity": 2,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "album-cloud-academy",
+      "name": "1st Mini Album 『CLOUD ACADEMY』",
+      "price": 22000,
+      "categoryId": "albums",
+      "thumbnailImage": "images/album-cloud-academy.webp",
+      "detailImages": [],
+      "description": "하이스트의 데뷔 앨범입니다. 입학 허가서와 학생수첩 포토북, 랜덤 학생증 포토카드가 함께 들어 있습니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "입학 허가서, 학생수첩 포토북, 랜덤 학생증 포토카드"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 15,
+      "maxQuantity": 5,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "album-cloud-academy-sunbeam",
+      "name": "『CLOUD ACADEMY』 SUNBEAM ver.",
+      "price": 22000,
+      "categoryId": "albums",
+      "thumbnailImage": "images/album-cloud-academy-sunbeam.webp",
+      "detailImages": [],
+      "description": "단우 컨셉의 크림 커버 버전입니다. 태양 배지 스티커가 포함되어 있습니다.",
+      "specifications": [
+        {
+          "label": "커버",
+          "value": "크림 (단우 컨셉)"
+        },
+        {
+          "label": "특전",
+          "value": "태양 배지 스티커"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 16,
+      "maxQuantity": 5,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "album-cloud-academy-compass",
+      "name": "『CLOUD ACADEMY』 COMPASS ver.",
+      "price": 22000,
+      "categoryId": "albums",
+      "thumbnailImage": "images/album-cloud-academy-compass.webp",
+      "detailImages": [],
+      "description": "상민 컨셉의 블루 커버 버전입니다. 나침반 배지 스티커가 포함되어 있습니다.",
+      "specifications": [
+        {
+          "label": "커버",
+          "value": "블루 (상민 컨셉)"
+        },
+        {
+          "label": "특전",
+          "value": "나침반 배지 스티커"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 17,
+      "maxQuantity": 5,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "album-blue-hour",
+      "name": "2nd Mini Album 『BLUE HOUR』",
+      "price": 22000,
+      "categoryId": "albums",
+      "thumbnailImage": "images/album-blue-hour.webp",
+      "detailImages": [],
+      "description": "옥상 연습실 컨셉의 성장 앨범입니다. 옥상 포스터와 서로에게 쓴 비밀 메모가 동봉되어 있습니다.",
+      "specifications": [
+        {
+          "label": "컨셉",
+          "value": "옥상 연습실"
+        },
+        {
+          "label": "동봉",
+          "value": "옥상 포스터, 비밀 메모"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 18,
+      "maxQuantity": 5,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "album-highest-day",
+      "name": "Special Album 『HIGHEST DAY』",
+      "price": 32000,
+      "categoryId": "albums",
+      "thumbnailImage": "images/album-highest-day.webp",
+      "detailImages": [],
+      "description": "졸업 무대를 기념하는 한정 앨범입니다. GRADUATION DAY 포토카드 1장이 확정으로 포함됩니다.",
+      "specifications": [
+        {
+          "label": "구분",
+          "value": "한정판"
+        },
+        {
+          "label": "확정 특전",
+          "value": "GRADUATION DAY 포토카드 1장"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 19,
+      "maxQuantity": 5,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "set-admission-package",
+      "name": "입학 패키지",
+      "price": 43000,
+      "categoryId": "sets",
+      "thumbnailImage": "images/set-admission-package.webp",
+      "detailImages": [],
+      "description": "1st Mini Album 『CLOUD ACADEMY』와 랜덤 포토카드 팩, 하이스트 로고 키링을 함께 담은 입학 패키지입니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "『CLOUD ACADEMY』 앨범, 랜덤 포토카드 팩, 하이스트 로고 키링"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 20,
+      "maxQuantity": 3,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "set-class-h02",
+      "name": "CLASS H-02 세트",
+      "price": 32000,
+      "categoryId": "sets",
+      "thumbnailImage": "images/set-class-h02.webp",
+      "detailImages": [],
+      "description": "단우 키링과 상민 키링, STUDENT ID 포토카드 2장(단우·상민)으로 구성된 CLASS H-02 세트입니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "단우 키링, 상민 키링, STUDENT ID 포토카드 2장 (단우·상민)"
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 21,
+      "maxQuantity": 3,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "set-graduation-package",
+      "name": "졸업 패키지",
+      "price": 60000,
+      "categoryId": "sets",
+      "thumbnailImage": "images/set-graduation-package.webp",
+      "detailImages": [],
+      "description": "Special Album 『HIGHEST DAY』와 인형 1종으로 구성된 졸업 패키지입니다. 인형은 단우·상민 중 하나를 고를 수 있습니다.",
+      "specifications": [
+        {
+          "label": "구성",
+          "value": "『HIGHEST DAY』 앨범, 인형 1종 (단우·상민 중 선택)"
+        }
+      ],
+      "options": [
+        {
+          "name": "인형",
+          "values": [
+            "단우",
+            "상민"
+          ]
+        }
+      ],
+      "saleStatus": "onSale",
+      "isVisible": true,
+      "displayOrder": 22,
+      "maxQuantity": 2,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
     }
   ]
 }

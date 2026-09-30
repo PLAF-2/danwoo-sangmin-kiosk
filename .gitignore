@@ -1,8 +1,6 @@
 .worktrees/
 
 node_modules/
-.vite/
-out/
 dist/
 coverage/
 playwright-report/

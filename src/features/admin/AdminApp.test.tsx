@@ -9,8 +9,6 @@ const authenticate = vi.fn();
 const keepAlive = vi.fn();
 const logout = vi.fn();
 const changePassword = vi.fn();
-const exportBackup = vi.fn();
-const importBackup = vi.fn();
 
 beforeEach(() => {
   Object.defineProperty(window, 'kiosk', {
@@ -35,8 +33,6 @@ beforeEach(() => {
         keepAlive,
         logout,
         changePassword,
-        exportBackup,
-        importBackup,
       },
     },
   });
@@ -44,8 +40,6 @@ beforeEach(() => {
   keepAlive.mockReset().mockResolvedValue(undefined);
   logout.mockReset().mockResolvedValue(undefined);
   changePassword.mockReset().mockResolvedValue(undefined);
-  exportBackup.mockReset().mockResolvedValue('C:\\backup.json');
-  importBackup.mockReset().mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -136,21 +130,4 @@ describe('admin authentication', () => {
     router.dispose();
   });
 
-  it('reports backup success and import failure without hiding the error', async () => {
-    authenticate.mockResolvedValue(true);
-    importBackup.mockRejectedValue(new Error('invalid backup'));
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const router = createAppMemoryRouter(['/admin/login']);
-    render(<RouterProvider router={router} />);
-    fireEvent.change(await screen.findByLabelText('비밀번호'), { target: { value: 'current-secret' } });
-    fireEvent.click(screen.getByRole('button', { name: '로그인' }));
-    fireEvent.click(await screen.findByRole('link', { name: '시스템' }));
-
-    fireEvent.click(await screen.findByRole('button', { name: '백업 내보내기' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('백업을 저장했습니다');
-    fireEvent.click(screen.getByRole('button', { name: '백업 가져오기' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('invalid backup');
-    expect(confirm).toHaveBeenCalled();
-    router.dispose();
-  });
 });

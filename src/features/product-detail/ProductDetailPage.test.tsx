@@ -116,7 +116,7 @@ describe('ProductDetailPage', () => {
     renderPage();
     const image = await screen.findByAltText('상세 상품 이미지 1');
     fireEvent.error(image);
-    expect(image).toHaveAttribute('src', expect.stringContaining('horizon-keyring'));
+    expect(image).toHaveAttribute('src', expect.stringContaining('product-fallback'));
   });
 
   it('does not render decorative cloud chrome in the product header', async () => {
@@ -125,4 +125,25 @@ describe('ProductDetailPage', () => {
 
     expect(document.body.textContent).not.toContain('☁');
   });
+
+  it('requires every option before adding and stores the chosen value in the cart', async () => {
+    const set = createProduct({ id: 'set', name: '졸업 패키지', options: [{ name: '인형', values: ['단우', '상민'] }] });
+    Object.defineProperty(window, 'kiosk', {
+      configurable: true,
+      value: { catalog: { read: vi.fn().mockResolvedValue(createCatalogData({ products: [set] })) } },
+    });
+    renderPage('set');
+
+    expect(await screen.findByRole('button', { name: '장바구니 담기' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '바로 구매' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '상민' }));
+    expect(screen.getByRole('button', { name: '상민' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: '장바구니 담기' }));
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/shop'));
+    expect(Object.values(useCartStore.getState().items)).toEqual([
+      { productId: 'set', quantity: 1, capturedUnitPrice: 25000, selectedOptions: [{ name: '인형', value: '상민' }] },
+    ]);
+  });
 });
+

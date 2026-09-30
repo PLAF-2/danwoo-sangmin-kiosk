@@ -3,10 +3,9 @@ import { RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppSettings, createCatalogData, createOrder, createPaymentSettings } from '../test/fixtures';
-import { createAppMemoryRouter, createAppRouter, createWebAppRouter } from './router';
+import { createAppMemoryRouter, createAppRouter } from './router';
 
 const routeCases = [
-  ['/shop', '내가 담은 굿즈'],
   ['/products/horizon-album', 'HORIZON Album'],
   ['/checkout', '주문 내용을 확인해 주세요'],
   ['/complete/HK-20260926-001', '결제가 완료되었습니다'],
@@ -116,19 +115,16 @@ describe('application router', () => {
     router.dispose();
   });
 
-  it('loads the logical path from a packaged-style hash URL', async () => {
-    window.history.replaceState(null, '', '/#/shop');
-    const router = createAppRouter();
-
+  it('renders the shop with its cart dock', async () => {
+    const router = createAppMemoryRouter(['/shop']);
     render(<RouterProvider router={router} />);
-
-    expect(await screen.findByRole('heading', { name: '내가 담은 굿즈' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: '내가 담은 굿즈' })).toBeInTheDocument();
     router.dispose();
   });
 
   it('loads a direct browser URL after a web page reload', async () => {
     window.history.replaceState(null, '', '/admin/login');
-    const router = createWebAppRouter();
+    const router = createAppRouter();
     render(<RouterProvider router={router} />);
     expect(await screen.findByRole('heading', { name: '관리자 로그인' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/admin/login');

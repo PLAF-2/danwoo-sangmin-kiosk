@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useKioskApi } from '../../app/providers';
 
 import { useCartStore } from '../../domain/cart/cartStore';
-import type { CatalogData, Product } from '../../domain/contracts';
+import type { CatalogData, Product, SelectedOption } from '../../domain/contracts';
+import { formatSelectedOptions } from '../../domain/productOptions';
 import { toKioskMediaUrl } from '../../services/kioskApi';
 
 import './catalog.css';
@@ -68,6 +69,60 @@ function ProductCard({ product, onAdd, onOpen }: { product: Product; onAdd: () =
   );
 }
 
+export function OptionPicker({ product, onCancel, onConfirm }: {
+  product: Product;
+  onCancel: () => void;
+  onConfirm: (selectedOptions: SelectedOption[]) => void;
+}) {
+  const options = product.options ?? [];
+  const [choices, setChoices] = useState<Record<string, string>>({});
+  const complete = options.every(({ name }) => Object.hasOwn(choices, name));
+
+  return (
+    <div className="option-picker-backdrop" onClick={onCancel} role="presentation">
+      <section
+        aria-labelledby="option-picker-title"
+        aria-modal="true"
+        className="option-picker"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <header>
+          <img alt="" src={toKioskMediaUrl(product.thumbnailImage)} />
+          <div><h2 id="option-picker-title">{product.name}</h2><span>{won(product.price)}</span></div>
+        </header>
+        {options.map((option) => (
+          <fieldset key={option.name}>
+            <legend>{option.name} 선택</legend>
+            <div>
+              {option.values.map((value) => (
+                <button
+                  aria-pressed={choices[option.name] === value}
+                  key={value}
+                  onClick={() => setChoices({ ...choices, [option.name]: value })}
+                  type="button"
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        ))}
+        <footer>
+          <button onClick={onCancel} type="button">취소</button>
+          <button
+            disabled={!complete}
+            onClick={() => onConfirm(options.map(({ name }) => ({ name, value: choices[name]! })))}
+            type="button"
+          >
+            장바구니에 담기
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 export function CatalogPage() {
   const api = useKioskApi();
   const navigate = useNavigate();
@@ -76,6 +131,7 @@ export function CatalogPage() {
   const returnState = location.state as Partial<CatalogReturnState> | null;
   const [catalog, setCatalog] = useState<CatalogData | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState(returnState?.categoryId ?? allCategoryId);
+  const [optionProduct, setOptionProduct] = useState<Product | null>(null);
   const cart = useCartStore();
 
   useEffect(() => {
@@ -105,9 +161,11 @@ export function CatalogPage() {
     [catalog, selectedCategoryId],
   );
   const cartLines = useMemo(
-    () => Object.values(cart.items).flatMap((item) => {
+    () => Object.entries(cart.items).flatMap(([key, item]) => {
       const product = catalog?.products.find(({ id }) => id === item.productId);
-      return product ? [{ item, product }] : [];
+      if (!product) return [];
+      const options = formatSelectedOptions(item.selectedOptions);
+      return [{ key, item, product, options, label: options ? `${product.name} (${options})` : product.name }];
     }),
     [cart.items, catalog],
   );
@@ -119,14 +177,19 @@ export function CatalogPage() {
     }
   }
 
-  function decrease(product: Product) {
-    const item = cart.items[product.id];
+  function decrease(key: string, label: string) {
+    const item = cart.items[key];
     if (!item) return;
     if (item.quantity === 1) {
-      if (window.confirm(`${product.name}을(를) 장바구니에서 뺄까요?`)) cart.remove(product.id);
+      if (window.confirm(`${label}을(를) 장바구니에서 뺄까요?`)) cart.remove(key);
       return;
     }
-    cart.decrement(product.id);
+    cart.decrement(key);
+  }
+
+  function addProduct(product: Product) {
+    if (product.options?.length) setOptionProduct(product);
+    else cart.add(product);
   }
 
   return (
@@ -146,7 +209,7 @@ export function CatalogPage() {
           {products.map((product) => (
             <ProductCard
               key={product.id}
-              onAdd={() => cart.add(product)}
+              onAdd={() => addProduct(product)}
               onOpen={() => navigate(`/products/${product.id}`, { state: { categoryId: selectedCategoryId, scrollTop: catalogScrollRef.current?.scrollTop ?? 0 } })}
               product={product}
             />
@@ -156,13 +219,13 @@ export function CatalogPage() {
       </section>
       <section className="cart-panel cart-panel--dock" aria-label="내가 담은 굿즈">
         <div className="cart-scroll cart-dock__items cart-dock__items--scrollable" data-testid="cart-scroll">
-          {cartLines.length === 0 ? <p>장바구니가 비어 있습니다.</p> : cartLines.map(({ item, product }) => (
-            <div className="cart-line" key={product.id}>
+          {cartLines.length === 0 ? <p>장바구니가 비어 있습니다.</p> : cartLines.map(({ key, item, product, options, label }) => (
+            <div className="cart-line" key={key}>
               <img alt="" onError={(event) => { event.currentTarget.src = ''; }} src={toKioskMediaUrl(product.thumbnailImage)} />
-              <span>{product.name}</span>
-              <button aria-label={`${product.name} 수량 줄이기`} onClick={() => decrease(product)} type="button">−</button>
+              <span className="cart-line__name">{product.name}{options && <small>{options}</small>}</span>
+              <button aria-label={`${label} 수량 줄이기`} onClick={() => decrease(key, label)} type="button">−</button>
               <b>{item.quantity}</b>
-              <button aria-label={`${product.name} 수량 늘리기`} onClick={() => cart.increment(product.id, product.maxQuantity)} type="button">+</button>
+              <button aria-label={`${label} 수량 늘리기`} onClick={() => cart.increment(key, product.maxQuantity)} type="button">+</button>
               <span>{won(item.quantity * item.capturedUnitPrice)}</span>
             </div>
           ))}
@@ -172,6 +235,16 @@ export function CatalogPage() {
           <button disabled={cart.itemCount() === 0} onClick={() => navigate('/checkout')} type="button">구매하러 가기</button>
         </footer>
       </section>
+      {optionProduct && (
+        <OptionPicker
+          onCancel={() => setOptionProduct(null)}
+          onConfirm={(selectedOptions) => {
+            cart.add(optionProduct, 1, selectedOptions);
+            setOptionProduct(null);
+          }}
+          product={optionProduct}
+        />
+      )}
     </main>
   );
 }

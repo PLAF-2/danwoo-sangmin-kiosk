@@ -181,7 +181,7 @@ describe('shipped defaults', () => {
     expect(catalogDefaults.products.map((product) => productSchema.parse(product))).toEqual(
       catalogDefaults.products,
     );
-    expect(catalogDefaults.categories.find(({ id }) => id === 'goods')?.name).toBe('굿즈');
+    expect(catalogDefaults.categories.find(({ id }) => id === 'photocards')?.name).toBe('포토카드');
   });
 
   it('ships valid app settings', () => {

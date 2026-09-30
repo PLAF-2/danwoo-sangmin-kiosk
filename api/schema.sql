@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at timestamptz NOT NULL
 );
 CREATE INDEX IF NOT EXISTS products_category_id_idx ON products(category_id);
+-- Added after the first deployment; NULL means the product has no choices.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS options jsonb CHECK (options IS NULL OR jsonb_typeof(options) = 'array');
 
 CREATE TABLE IF NOT EXISTS product_detail_images (
   product_id text NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -62,6 +64,8 @@ CREATE TABLE IF NOT EXISTS order_items (
   captured_unit_price integer NOT NULL CHECK (captured_unit_price >= 0),
   PRIMARY KEY (order_number, display_order)
 );
+-- Added after the first deployment; NULL means the line has no chosen options.
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS selected_options jsonb CHECK (selected_options IS NULL OR jsonb_typeof(selected_options) = 'array');
 
 CREATE TABLE IF NOT EXISTS admin_credentials (
   id integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),

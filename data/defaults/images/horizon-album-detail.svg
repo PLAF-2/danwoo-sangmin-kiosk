@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-label="Album detail placeholder">
-  <rect width="800" height="800" fill="#f2ede3"/>
-  <path d="M80 520 400 220l320 300" fill="none" stroke="#22384a" stroke-width="36"/>
-  <path d="M80 610h640" stroke="#d7c7a1" stroke-width="28"/>
-  <text x="400" y="710" fill="#182936" font-family="sans-serif" font-size="44" text-anchor="middle">ALBUM DETAIL</text>
-</svg>

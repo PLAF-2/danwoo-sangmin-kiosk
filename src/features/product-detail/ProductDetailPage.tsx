@@ -8,7 +8,7 @@ import { toKioskMediaUrl } from '../../services/kioskApi';
 
 import './product-detail.css';
 
-const fallbackImage = toKioskMediaUrl('images/horizon-keyring.svg');
+const fallbackImage = toKioskMediaUrl('images/product-fallback.svg');
 const won = (amount: number) => `${new Intl.NumberFormat('ko-KR').format(amount)}원`;
 
 function resolveProduct(catalog: CatalogData, productId: string | undefined) {
@@ -25,7 +25,7 @@ function ProductImage({ src, alt, className = '' }: { src: string; alt: string; 
       alt={alt}
       className={className}
       onError={(event) => {
-        if (event.currentTarget.src.endsWith('horizon-keyring.svg')) return;
+        if (event.currentTarget.src.endsWith('product-fallback.svg')) return;
         event.currentTarget.src = fallbackImage;
       }}
       src={toKioskMediaUrl(src)}
@@ -55,6 +55,7 @@ export function ProductDetailPage() {
   const [catalog, setCatalog] = useState<CatalogData | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [choices, setChoices] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
@@ -76,20 +77,24 @@ export function ProductDetailPage() {
   const product: Product = result.product;
   const soldOut = product.saleStatus === 'soldOut';
   const images = [product.thumbnailImage, ...product.detailImages];
+  const options = product.options ?? [];
+  const optionsChosen = options.every(({ name }) => Object.hasOwn(choices, name));
+  const selectedOptions = options.map(({ name }) => ({ name, value: choices[name] ?? '' }));
+  const canBuy = !soldOut && optionsChosen;
 
   function goBack() {
     navigate('/shop', { state: location.state });
   }
 
   function addToCart() {
-    if (soldOut) return;
-    cart.add(product, quantity);
+    if (!canBuy) return;
+    cart.add(product, quantity, selectedOptions);
     navigate('/shop', { state: location.state });
   }
 
   function buyNow() {
-    if (soldOut) return;
-    cart.add(product, quantity);
+    if (!canBuy) return;
+    cart.add(product, quantity, selectedOptions);
     navigate('/checkout');
   }
 
@@ -129,6 +134,28 @@ export function ProductDetailPage() {
             {product.specifications.map(({ label, value }) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
           </dl>
         </div>
+        {options.length > 0 && (
+          <div className="product-options">
+            {options.map((option) => (
+              <fieldset key={option.name}>
+                <legend>{option.name} 선택</legend>
+                <div>
+                  {option.values.map((value) => (
+                    <button
+                      aria-pressed={choices[option.name] === value}
+                      disabled={soldOut}
+                      key={value}
+                      onClick={() => setChoices({ ...choices, [option.name]: value })}
+                      type="button"
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            ))}
+          </div>
+        )}
         <div className="product-quantity">
           <span>수량</span>
           <button aria-label="수량 줄이기" disabled={quantity <= 1 || soldOut} onClick={() => setQuantity((value) => Math.max(1, value - 1))} type="button">−</button>
@@ -137,8 +164,8 @@ export function ProductDetailPage() {
         </div>
         <div className="product-detail-total"><span>합계</span><strong data-testid="product-total">{won(product.price * quantity)}</strong></div>
         <div className="product-detail-actions">
-          <button disabled={soldOut} onClick={addToCart} type="button">장바구니 담기</button>
-          <button disabled={soldOut} onClick={buyNow} type="button">바로 구매</button>
+          <button disabled={!canBuy} onClick={addToCart} type="button">장바구니 담기</button>
+          <button disabled={!canBuy} onClick={buyNow} type="button">바로 구매</button>
         </div>
       </section>
     </main>

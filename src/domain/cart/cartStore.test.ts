@@ -103,6 +103,32 @@ describe('cart store', () => {
     },
   );
 
+  it('keeps each option choice on its own line while limiting the product total', () => {
+    const danwoo = [{ name: '인형', value: '단우' }];
+    const sangmin = [{ name: '인형', value: '상민' }];
+    const set = { id: 'set', price: 60_000, maxQuantity: 3 };
+
+    useCartStore.getState().add(set, 1, danwoo);
+    useCartStore.getState().add(set, 1, sangmin);
+    useCartStore.getState().add(set, 1, danwoo);
+
+    const lines = Object.entries(useCartStore.getState().items);
+    expect(lines.map(([, item]) => item)).toEqual([
+      { productId: 'set', quantity: 2, capturedUnitPrice: 60_000, selectedOptions: danwoo },
+      { productId: 'set', quantity: 1, capturedUnitPrice: 60_000, selectedOptions: sangmin },
+    ]);
+
+    const [danwooKey, sangminKey] = lines.map(([key]) => key);
+    useCartStore.getState().increment(sangminKey!, set.maxQuantity);
+    useCartStore.getState().add(set, 1, danwoo);
+    expect(useCartStore.getState().itemCount()).toBe(3);
+
+    useCartStore.getState().decrement(danwooKey!);
+    useCartStore.getState().increment(sangminKey!, set.maxQuantity);
+    expect(useCartStore.getState().items[sangminKey!]?.quantity).toBe(2);
+    expect(useCartStore.getState().itemCount()).toBe(3);
+  });
+
   it('clears all items and totals', () => {
     useCartStore.getState().add(product, 2);
 

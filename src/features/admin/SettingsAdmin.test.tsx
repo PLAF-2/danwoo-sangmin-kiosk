@@ -10,9 +10,8 @@ const settingsRead = vi.fn();
 const settingsSave = vi.fn();
 const paymentRead = vi.fn();
 const paymentSave = vi.fn();
-const importWelcomeImage = vi.fn();
-const selectImage = vi.fn();
-const saveSquareCrop = vi.fn();
+const upload = vi.fn();
+const image = (name: string) => new File(['image'], name, { type: 'image/png' });
 
 beforeEach(() => {
   Object.defineProperty(window, 'kiosk', {
@@ -25,7 +24,7 @@ beforeEach(() => {
         readPayment: paymentRead,
         savePayment: paymentSave,
       },
-      media: { importWelcomeImage, selectImage, saveSquareCrop },
+      media: { upload },
     },
   });
   catalogRead.mockReset().mockResolvedValue(createCatalogData());
@@ -34,15 +33,16 @@ beforeEach(() => {
   settingsSave.mockReset().mockResolvedValue(undefined);
   paymentRead.mockReset().mockResolvedValue(createPaymentSettings());
   paymentSave.mockReset().mockResolvedValue(undefined);
-  importWelcomeImage.mockReset().mockResolvedValue('images/new-welcome.png');
-  selectImage.mockReset();
-  saveSquareCrop.mockReset();
+  upload.mockReset().mockResolvedValue('images/new-welcome.png');
+  // Square images upload directly; cropping of other shapes is covered by WebMedia tests.
+  vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ width: 400, height: 400, close: vi.fn() }));
   vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('category administration', () => {
@@ -72,8 +72,8 @@ describe('welcome administration', () => {
     render(<WelcomeAdmin />);
 
     expect(await screen.findByLabelText('9:16 웰컴 미리보기')).toHaveStyle({ aspectRatio: '9 / 16' });
-    fireEvent.click(screen.getByRole('button', { name: '배경 이미지 업로드' }));
-    await waitFor(() => expect(importWelcomeImage).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText('배경 이미지 업로드'), { target: { files: [image('welcome.png')] } });
+    await waitFor(() => expect(upload).toHaveBeenCalled());
     fireEvent.change(screen.getByLabelText('가로 위치'), { target: { value: '25' } });
     fireEvent.change(screen.getByLabelText('세로 위치'), { target: { value: '70' } });
     fireEvent.change(screen.getByLabelText('확대 배율'), { target: { value: '1.8' } });
@@ -121,12 +121,8 @@ describe('payment administration', () => {
     await waitFor(() => expect(paymentSave).toHaveBeenCalledWith(expect.objectContaining({ mode: value })));
   });
 
-  it('supports all modes and saves bank QR fields after square crop', async () => {
-    selectImage.mockResolvedValue({
-      selectionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', kind: 'square',
-      previewDataUrl: 'data:image/png;base64,AA==', width: 400, height: 400,
-    });
-    saveSquareCrop.mockResolvedValue('images/qr.png');
+  it('supports all modes and saves bank QR fields after a square upload', async () => {
+    upload.mockResolvedValue('images/qr.png');
     render(<PaymentAdmin />);
 
     const mode = await screen.findByLabelText('결제 모드');
@@ -137,9 +133,8 @@ describe('payment administration', () => {
     fireEvent.change(screen.getByLabelText('은행명'), { target: { value: '하늘은행' } });
     fireEvent.change(screen.getByLabelText('계좌번호'), { target: { value: '테스트 계좌' } });
     fireEvent.change(screen.getByLabelText('예금주'), { target: { value: 'HIGHEST' } });
-    fireEvent.click(screen.getByRole('button', { name: 'QR 이미지 선택' }));
-    fireEvent.click(await screen.findByRole('button', { name: '이 영역 사용' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('QR 이미지 선택'), { target: { files: [image('qr.png')] } });
+    await waitFor(() => expect(upload).toHaveBeenCalled());
     fireEvent.change(screen.getByLabelText('처리 시간'), { target: { value: '5' } });
     fireEvent.change(screen.getByLabelText('시뮬레이션 결과'), { target: { value: 'failure' } });
     fireEvent.change(screen.getByLabelText('수령 안내'), { target: { value: '운영자에게 주문 번호를 보여주세요.' } });

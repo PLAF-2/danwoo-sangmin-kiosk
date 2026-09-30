@@ -13,7 +13,7 @@ import { toKioskMediaUrl } from './kioskApi';
 it('builds displayable default images at the URLs used by the browser renderer', async () => {
   const outDir = await mkdtemp(join(tmpdir(), 'kiosk-web-images-'));
   try {
-    await build({ configFile: resolve('vite.web.config.ts'), build: { outDir }, logLevel: 'silent' });
+    await build({ configFile: resolve('vite.config.ts'), build: { outDir }, logLevel: 'silent' });
     const references = [settings.welcomeBackgroundImage, ...catalog.products.flatMap((product) => [product.thumbnailImage, ...product.detailImages])];
     for (const reference of references) {
       const url = new URL(toKioskMediaUrl(reference), 'https://kiosk.example/shop');

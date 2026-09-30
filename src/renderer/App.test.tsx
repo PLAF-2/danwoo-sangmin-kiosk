@@ -45,7 +45,7 @@ describe('App', () => {
     router.dispose();
   });
 
-  it('uses the injected browser API instead of the Electron preload', async () => {
+  it('uses the injected web API instead of the window test double', async () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => new Response(JSON.stringify(
       url === '/api/settings' ? createAppSettings() : createCatalogData(),
     )));

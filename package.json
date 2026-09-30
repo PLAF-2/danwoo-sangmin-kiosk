@@ -4,23 +4,21 @@
   "version": "0.1.0",
   "description": "HIGHEST merchandise kiosk",
   "author": "PLAF-2",
-  "main": ".vite/build/main.js",
   "private": true,
   "packageManager": "npm@11.9.0",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "start": "electron-forge start",
-    "dev:web": "vite --config vite.web.config.ts",
-    "build:web": "vite build --config vite.web.config.ts",
-    "seed:web": "tsx scripts/seed-web.ts",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "db:setup": "tsx scripts/setup-db.ts",
+    "db:reset-catalog": "tsx scripts/setup-db.ts --reset-catalog",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.main.json && tsc --noEmit -p tsconfig.renderer.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.e2e.json && tsc --noEmit -p tsconfig.api.json",
+    "typecheck": "tsc --noEmit -p tsconfig.renderer.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.e2e.json && tsc --noEmit -p tsconfig.api.json",
     "test": "vitest run",
-    "test:e2e": "electron-forge package && playwright test",
-    "test:web-e2e": "playwright test --config playwright.web.config.ts",
-    "make": "electron-forge make"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -33,15 +31,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^7.8.1",
-    "@electron-forge/maker-deb": "^7.8.1",
-    "@electron-forge/maker-rpm": "^7.8.1",
-    "@electron-forge/maker-zip": "^7.8.1",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.8.1",
-    "@electron-forge/plugin-fuses": "^7.8.1",
-    "@electron-forge/plugin-vite": "^7.8.1",
-    "@electron-forge/shared-types": "^7.8.1",
-    "@electron/fuses": "^1.8.0",
+    "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "^9.35.0",
     "@playwright/test": "^1.55.0",
     "@testing-library/jest-dom": "^6.8.0",
@@ -50,7 +40,6 @@
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
-    "electron": "^38.0.0",
     "eslint": "^9.35.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

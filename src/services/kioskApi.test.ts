@@ -10,16 +10,8 @@ describe('toKioskMediaUrl', () => {
     expect(toKioskMediaUrl(url)).toBe(url);
   });
 
-  it('converts a safe stored image path to an encoded kiosk-media URL', () => {
-    vi.stubGlobal('kiosk', {});
-    expect(toKioskMediaUrl('images/products/album cover.png')).toBe(
-      'kiosk-media://images/products/album%20cover.png',
-    );
+  it('converts a safe stored image path to an encoded same-origin URL', () => {
     expect(toKioskMediaUrl('')).toBe('');
-  });
-
-  it('uses root-relative same-origin image URLs without the Electron bridge', () => {
-    vi.stubGlobal('kiosk', undefined);
     const path = toKioskMediaUrl('images/products/album cover.png');
     expect(path).toBe('/images/products/album%20cover.png');
     expect(new URL(path, 'https://kiosk.example/admin/products').href).toBe(

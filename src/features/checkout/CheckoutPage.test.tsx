@@ -52,12 +52,31 @@ describe('CheckoutPage', () => {
     expect(within(items).getByText('HORIZON Album')).toBeInTheDocument();
     expect(within(items).getByText('수량 2개')).toBeInTheDocument();
     expect(within(items).getByText('50,000원')).toBeInTheDocument();
-    expect(within(items).getByAltText('HORIZON Album')).toHaveAttribute('src', 'kiosk-media://images/horizon-album.png');
+    expect(within(items).getByAltText('HORIZON Album')).toHaveAttribute('src', '/images/horizon-album.png');
     expect(within(fixed).getByText('상품 금액')).toBeInTheDocument();
     expect(within(fixed).getByText('할인')).toBeInTheDocument();
     expect(within(fixed).getByText('0원')).toBeInTheDocument();
     expect(within(fixed).getAllByText('50,000원')).toHaveLength(2);
     expect(within(fixed).getByRole('button', { name: '결제하기' })).toBeInTheDocument();
+  });
+
+  it('shows each option line and sends its selected options to processing', async () => {
+    const product = createProduct({ options: [{ name: '인형', values: ['단우', '상민'] }] });
+    catalogRead.mockResolvedValue(createCatalogData({ products: [product] }));
+    useCartStore.getState().clear();
+    useCartStore.getState().add(product, 1, [{ name: '인형', value: '단우' }]);
+    useCartStore.getState().add(product, 1, [{ name: '인형', value: '상민' }]);
+    renderCheckout();
+
+    fireEvent.click(await ready());
+    const items = screen.getByTestId('checkout-items');
+    expect(within(items).getByText('인형: 단우')).toBeInTheDocument();
+    expect(within(items).getByText('인형: 상민')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/processing'));
+    expect(JSON.parse(screen.getByTestId('request-state').textContent ?? '{}').items).toEqual([
+      { productId: 'horizon-album', quantity: 1, capturedUnitPrice: 25000, selectedOptions: [{ name: '인형', value: '단우' }] },
+      { productId: 'horizon-album', quantity: 1, capturedUnitPrice: 25000, selectedOptions: [{ name: '인형', value: '상민' }] },
+    ]);
   });
 
   it('displays current catalog prices when captured cart prices are older', async () => {
@@ -142,7 +161,7 @@ describe('CheckoutPage', () => {
     for (const text of ['구름은행', '123-456-789', '하이스트', 'QR을 스캔하고 입금해 주세요.']) {
       expect(screen.getByText(text)).toBeInTheDocument();
     }
-    expect(screen.getByAltText('입금 QR 코드')).toHaveAttribute('src', 'kiosk-media://images/bank-qr.png');
+    expect(screen.getByAltText('입금 QR 코드')).toHaveAttribute('src', '/images/bank-qr.png');
     expect(screen.getByText(/운영자.*입금.*확인/)).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('결제 완료');
   });
@@ -161,7 +180,7 @@ describe('CheckoutPage', () => {
     expect(screen.getByText('구름은행')).toBeInTheDocument();
     expect(screen.getByText('123-456')).toBeInTheDocument();
     expect(screen.getByText('하이스트')).toBeInTheDocument();
-    expect(screen.getByAltText('입금 QR 코드')).toHaveAttribute('src', 'kiosk-media://images/bank-qr.png');
+    expect(screen.getByAltText('입금 QR 코드')).toHaveAttribute('src', '/images/bank-qr.png');
     expect(screen.getByText('QR을 스캔하고 입금해 주세요.')).toBeInTheDocument();
     expect(screen.getByText(/운영자.*입금.*확인/)).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('결제 완료');

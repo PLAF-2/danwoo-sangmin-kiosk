@@ -15,24 +15,7 @@ export function toKioskMediaUrl(storedPath: string): string {
     throw new Error(`Unsafe kiosk media path: ${storedPath}`);
   }
   const segments = parsed.data.split('/');
-  const prefix = (globalThis as { kiosk?: KioskApi }).kiosk ? 'kiosk-media://' : '/';
-  return `${prefix}images/${segments.slice(1).map(encodeURIComponent).join('/')}`;
-}
-
-export interface MediaSelection {
-  selectionId: string;
-  kind: 'square' | 'welcome';
-  previewDataUrl: string;
-  width: number;
-  height: number;
-}
-
-export interface SquareCropInput {
-  selectionId: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  return `/images/${segments.slice(1).map(encodeURIComponent).join('/')}`;
 }
 
 export interface KioskApi {
@@ -47,11 +30,7 @@ export interface KioskApi {
     savePayment(input: PaymentSettings): Promise<void>;
   };
   media: {
-    upload?(file: File): Promise<string>;
-    selectImage(kind: 'square' | 'welcome'): Promise<MediaSelection | null>;
-    saveSquareCrop(input: SquareCropInput): Promise<string>;
-    importSquareImage(): Promise<string | null>;
-    importWelcomeImage(): Promise<string | null>;
+    upload(file: File): Promise<string>;
   };
   orders: {
     /** Called after payment presentation/decision; persists a terminal result and deduplicates by requestId. */
@@ -59,12 +38,9 @@ export interface KioskApi {
     read(orderNumber: string): Promise<Order | null>;
   };
   admin: {
-    supportsBackup?: boolean;
     authenticate(password: string): Promise<boolean>;
     keepAlive(): Promise<void>;
     logout(): Promise<void>;
     changePassword(currentPassword: string, nextPassword: string): Promise<void>;
-    exportBackup(): Promise<string | null>;
-    importBackup(): Promise<void>;
   };
 }

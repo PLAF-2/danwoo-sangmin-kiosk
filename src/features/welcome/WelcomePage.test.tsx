@@ -52,7 +52,7 @@ describe('WelcomePage', () => {
 
     const welcome = await screen.findByTestId('welcome-page');
     expect(welcome).toHaveStyle({
-      backgroundImage: 'url("kiosk-media://images/custom-welcome.svg")',
+      backgroundImage: 'url("/images/custom-welcome.svg")',
       backgroundPosition: '32% 68%',
       backgroundSize: 'cover',
       transform: 'scale(1.4)',

@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { useKioskApi } from '../../app/providers';
 
-import type { MediaSelection } from '../../services/kioskApi';
-
-type ImageSelection = MediaSelection | { file: File; previewDataUrl: string; width: number; height: number };
+type ImageSelection = { file: File; previewDataUrl: string; width: number; height: number };
 
 export function SquareImagePicker({
   buttonLabel,
@@ -19,7 +17,6 @@ export function SquareImagePicker({
   const [uploading, setUploading] = useState(false);
 
   const upload = async (file: File) => {
-    if (!api.media.upload) return;
     setError('');
     setUploading(true);
     try {
@@ -46,18 +43,6 @@ export function SquareImagePicker({
     finally { setUploading(false); }
   };
 
-  const choose = async () => {
-    setError('');
-    try {
-      const selected = await api.media.selectImage('square');
-      if (!selected) return;
-      setSelection(selected);
-      setOffset(Math.floor(Math.abs(selected.width - selected.height) / 2));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '이미지를 선택하지 못했습니다.');
-    }
-  };
-
   const save = async () => {
     if (!selection || uploading) return;
     const size = Math.min(selection.width, selection.height);
@@ -66,27 +51,20 @@ export function SquareImagePicker({
     setError('');
     setUploading(true);
     try {
-      let path: string;
-      if ('file' in selection) {
-        if (!api.media.upload) throw new Error('이미지 업로드를 사용할 수 없습니다.');
-        const image = await createImageBitmap(selection.file);
-        const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = size;
-        try {
-          const context = canvas.getContext('2d');
-          if (!context) throw new Error('이미지를 자르지 못했습니다.');
-          context.drawImage(image, x, y, size, size, 0, 0, size, size);
-        } finally {
-          image.close();
-        }
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((result) => result ? resolve(result) : reject(new Error('이미지를 자르지 못했습니다.')), 'image/png');
-        });
-        path = await api.media.upload(new File([blob], 'cropped.png', { type: 'image/png' }));
-      } else {
-        path = await api.media.saveSquareCrop({ selectionId: selection.selectionId, x, y, width: size, height: size });
+      const image = await createImageBitmap(selection.file);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      try {
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('이미지를 자르지 못했습니다.');
+        context.drawImage(image, x, y, size, size, 0, 0, size, size);
+      } finally {
+        image.close();
       }
-      onSaved(path);
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => result ? resolve(result) : reject(new Error('이미지를 자르지 못했습니다.')), 'image/png');
+      });
+      onSaved(await api.media.upload(new File([blob], 'cropped.png', { type: 'image/png' })));
       setSelection(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '이미지를 저장하지 못했습니다.');
@@ -97,7 +75,7 @@ export function SquareImagePicker({
 
   return (
     <>
-      {api.media.upload ? <label>{buttonLabel}<input
+      <label>{buttonLabel}<input
         accept="image/png,image/jpeg,image/webp"
         disabled={uploading || selection !== null}
         type="file"
@@ -106,7 +84,7 @@ export function SquareImagePicker({
           if (file) void upload(file);
           event.currentTarget.value = '';
         }}
-      /></label> : <button type="button" onClick={() => void choose()}>{buttonLabel}</button>}
+      /></label>
       {uploading && !selection && <p role="status">이미지 업로드 중…</p>}
       {error && !selection && <p role="alert">{error}</p>}
       {selection && (

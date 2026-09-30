@@ -5,12 +5,11 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['.vite', 'out', 'dist', 'node_modules', 'coverage', 'playwright-report', 'test-results'] },
+  { ignores: ['dist', 'node_modules', 'coverage', 'playwright-report', 'test-results'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
     files: [
-      'electron/**/*.ts',
       'api/**/*.ts',
       'scripts/**/*.ts',
       '*.config.ts',
@@ -19,8 +18,6 @@ export default tseslint.config(
     languageOptions: {
       globals: {
         ...globals.node,
-        MAIN_WINDOW_VITE_DEV_SERVER_URL: 'readonly',
-        MAIN_WINDOW_VITE_NAME: 'readonly',
       },
     },
   },
