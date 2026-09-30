@@ -23,9 +23,14 @@
 }
 
 .admin-login form {
+  display: grid;
+  gap: var(--space-4);
   width: min(100%, 28rem);
   padding: var(--space-8);
 }
+.admin-login h1 { margin: 0; color: var(--color-navy); }
+.admin-login .admin-eyebrow { margin: 0; }
+.admin-login button { width: 100%; min-height: 3.25rem; font-size: 1rem; }
 
 .admin-eyebrow {
   margin: 0 0 var(--space-2);
@@ -100,6 +105,11 @@
   background: white;
 }
 .admin-page textarea { min-height: 6rem; resize: vertical; }
+/* Keep the focus ring inside form fields instead of the global offset outline. */
+.admin-page input:focus-visible,
+.admin-page select:focus-visible,
+.admin-page textarea:focus-visible,
+.admin-login input:focus-visible { outline: 2px solid var(--color-blue); outline-offset: -1px; border-color: var(--color-blue); }
 .admin-page label,
 .admin-login label { display: grid; gap: var(--space-2); color: var(--color-navy); font-weight: 700; }
 [role='alert'] { color: #9b2335; font-weight: 700; }

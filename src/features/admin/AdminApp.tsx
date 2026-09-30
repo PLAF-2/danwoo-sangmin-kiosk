@@ -111,7 +111,7 @@ export function AdminLogin() {
   return (
     <main className="admin-login" aria-labelledby="admin-login-title">
       <form onSubmit={submit}>
-        <p className="admin-eyebrow">HIGHEST · LOCAL CONTROL</p>
+        <p className="admin-eyebrow">HIGHEST · ADMIN</p>
         <h1 id="admin-login-title">관리자 로그인</h1>
         <label>
           비밀번호
