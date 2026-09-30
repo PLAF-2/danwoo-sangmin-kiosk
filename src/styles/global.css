@@ -61,6 +61,15 @@ button,
   outline-offset: 3px;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* Kiosk popups (idle warning, leave confirmation): centered and kept inside the kiosk screen. */
 .kiosk-dialog-backdrop {
   position: fixed;

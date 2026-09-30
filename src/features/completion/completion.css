@@ -8,3 +8,14 @@
 .completion-ticket div + div { border-left-style: solid; border-left-color: var(--color-mist); }
 .completion-home, .completion-error button { min-height: 3.25rem; }
 .completion-page header { display: grid; gap: .15rem; color: var(--color-navy); letter-spacing: .1em; }.completion-page header strong { font-family: var(--font-family-display); font-size: 2rem; }.completion-hero span { display: none; }.completion-hero h1,.completion-pickup h2 { margin: 0; }.completion-hero h1 { font-size: 1.25rem; line-height: 1.25; white-space: nowrap; }.completion-hero p { margin: .25rem 0 0; font-size: .9rem; }.completion-ticket { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border-radius: 1.25rem; background: #fff; text-align: left; }.completion-ticket div { display: grid; min-width: 0; gap: .2rem; padding: .9rem; }.completion-ticket div + div { border-left: 1px solid var(--color-mist); }.completion-ticket strong { overflow: hidden; color: var(--color-blue); font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; }.completion-ticket span { overflow: hidden; font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }.completion-pickup { padding: 1rem; border-radius: 1.25rem; background: #f5f7f9; text-align: left; }.completion-pickup h2 { font-size: 1rem; }.completion-pickup p { margin: .35rem 0 0; font-size: .85rem; line-height: 1.4; }.completion-home,.completion-error button { border: 0; border-radius: var(--radius-pill); padding: .75rem 1rem; color: #fff; background: var(--color-blue); font-weight: 800; font-size: 1rem; cursor: pointer; }.completion-countdown { margin: 0; color: var(--color-blue); font-size: .85rem; font-weight: 800; }.completion-error { justify-items: center; }
+
+/* Completed order: the designed image fills the screen and the order details sit on the clouds below it. */
+.completion-page--done { position: relative; align-content: end; isolation: isolate; overflow: hidden; padding-bottom: 1.5rem; background: #d2e6fe; }
+.completion-background { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.completion-panel { display: grid; gap: .65rem; padding: .9rem; border-radius: 1.5rem; background: rgb(255 255 255 / 78%); box-shadow: 0 .6rem 1.8rem rgb(25 55 95 / 14%); backdrop-filter: blur(6px); animation: completion-panel-rise .4s cubic-bezier(.2, .8, .2, 1) both; }
+.completion-panel .completion-ticket { box-shadow: none; }
+.completion-panel .completion-ticket strong { font-size: 1.15rem; letter-spacing: .04em; }
+.completion-panel .completion-pickup { margin: 0; padding: 0; background: none; font-size: .85rem; text-align: center; }
+.completion-panel .completion-countdown { min-height: 1.1rem; }
+@keyframes completion-panel-rise { from { opacity: 0; transform: translateY(1.5rem); } }
+@media (prefers-reduced-motion: reduce) { .completion-panel { animation: none; } }

@@ -41,6 +41,12 @@ describe('CompletionPage', () => {
     expect(screen.getByText('카운터에서 주문 번호를 보여주세요.')).toBeInTheDocument();
     expect(read).toHaveBeenCalledWith('20260926-0001');
   });
+  it('shows the designed image and a short order number for long web order ids', async () => {
+    read.mockResolvedValue(createOrder({ orderNumber: '3d2aaca5-43e0-4e7b-8441-16c3f7fc3b21' }));
+    renderCompletion('3d2aaca5-43e0-4e7b-8441-16c3f7fc3b21'); await advance(0);
+    expect(screen.getByText('3D2AACA5')).toBeInTheDocument();
+    expect(document.querySelector('.completion-background')).toHaveAttribute('src', '/images/complete-kiosk.webp');
+  });
   it('shows a safe missing-order state that returns home', async () => {
     read.mockResolvedValue(null); renderCompletion('missing'); await advance(0);
     expect(screen.getByRole('heading', { name: '주문을 찾을 수 없습니다' })).toBeInTheDocument();
