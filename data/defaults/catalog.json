@@ -45,11 +45,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "포토카드 1장"
-        },
-        {
-          "label": "뒷면",
-          "value": "학번·전공·배지"
+          "value": "포토카드 1장 (앞면 학생증 사진, 뒷면 학번·전공·배지)"
         }
       ],
       "saleStatus": "onSale",
@@ -72,11 +68,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "포토카드 1장"
-        },
-        {
-          "label": "뒷면",
-          "value": "학번·전공·배지"
+          "value": "포토카드 1장 (앞면 학생증 사진, 뒷면 학번·전공·배지)"
         }
       ],
       "saleStatus": "onSale",
@@ -99,11 +91,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "포토카드 1장"
-        },
-        {
-          "label": "배경",
-          "value": "Locker 02"
+          "value": "포토카드 1장 (Locker 02 앞 단우·상민 셀피)"
         }
       ],
       "saleStatus": "onSale",
@@ -126,15 +114,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "포토카드 1장"
-        },
-        {
-          "label": "멤버",
-          "value": "상민"
-        },
-        {
-          "label": "배경",
-          "value": "Cloud Practice Room"
+          "value": "포토카드 1장 (구름 연습실 상민 개인 컷)"
         }
       ],
       "saleStatus": "onSale",
@@ -157,15 +137,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "포토카드 1장"
-        },
-        {
-          "label": "멤버",
-          "value": "단우"
-        },
-        {
-          "label": "배경",
-          "value": "Blue Rooftop"
+          "value": "포토카드 1장 (블루 루프탑 단우 개인 컷)"
         }
       ],
       "saleStatus": "onSale",
@@ -188,15 +160,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "포토카드 1장"
-        },
-        {
-          "label": "등급",
-          "value": "희귀 카드"
-        },
-        {
-          "label": "배경",
-          "value": "Highest Stage"
+          "value": "희귀 포토카드 1장 (하이스트 스테이지 졸업 무대 컷)"
         }
       ],
       "saleStatus": "onSale",
@@ -217,11 +181,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "포토카드 3장"
-        },
-        {
-          "label": "구성 방식",
-          "value": "전 종류 중 랜덤"
+          "value": "포토카드 3장 (전 종류 중 랜덤)"
         }
       ],
       "saleStatus": "onSale",
@@ -243,12 +203,8 @@
       "description": "크림 교복에 태양 배지를 단 단우 키링입니다. 구름 모자를 탈부착할 수 있습니다.",
       "specifications": [
         {
-          "label": "배지",
-          "value": "태양"
-        },
-        {
-          "label": "특징",
-          "value": "구름 모자 탈부착"
+          "label": "구성",
+          "value": "단우 키링 (태양 배지), 탈부착 구름 모자"
         }
       ],
       "saleStatus": "onSale",
@@ -270,12 +226,8 @@
       "description": "크림 교복에 나침반 배지를 단 상민 키링입니다. 구름 모자를 탈부착할 수 있습니다.",
       "specifications": [
         {
-          "label": "배지",
-          "value": "나침반"
-        },
-        {
-          "label": "특징",
-          "value": "구름 모자 탈부착"
+          "label": "구성",
+          "value": "상민 키링 (나침반 배지), 탈부착 구름 모자"
         }
       ],
       "saleStatus": "onSale",
@@ -298,11 +250,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "단우·상민 키링 2개"
-        },
-        {
-          "label": "특징",
-          "value": "자석으로 붙이면 별 모양 완성"
+          "value": "단우 키링, 상민 키링 (자석으로 붙이면 별 모양 완성)"
         }
       ],
       "saleStatus": "onSale",
@@ -324,12 +272,8 @@
       "description": "날개 달린 별 모양의 하이스트 공식 로고 메탈 키링입니다.",
       "specifications": [
         {
-          "label": "소재",
-          "value": "메탈"
-        },
-        {
-          "label": "디자인",
-          "value": "날개 달린 별 공식 로고"
+          "label": "구성",
+          "value": "날개 달린 별 로고 메탈 키링 1개"
         }
       ],
       "saleStatus": "onSale",
@@ -352,11 +296,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "봉제 인형"
-        },
-        {
-          "label": "포장",
-          "value": "스쿨백"
+          "value": "단우 봉제 인형 (교복), 스쿨백"
         }
       ],
       "saleStatus": "onSale",
@@ -379,11 +319,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "봉제 인형"
-        },
-        {
-          "label": "포장",
-          "value": "스쿨백"
+          "value": "상민 봉제 인형 (교복), 스쿨백"
         }
       ],
       "saleStatus": "onSale",
@@ -406,11 +342,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "크림 블루종, 블루 넥타이"
-        },
-        {
-          "label": "용도",
-          "value": "인형 교체용 의상"
+          "value": "크림 블루종, 셔츠, 블루 넥타이, 체크 반바지, 신발"
         }
       ],
       "saleStatus": "onSale",
@@ -432,12 +364,8 @@
       "description": "Locker 02 모양으로 만든 인형 보관 상자입니다.",
       "specifications": [
         {
-          "label": "디자인",
-          "value": "Locker 02"
-        },
-        {
-          "label": "용도",
-          "value": "인형 보관"
+          "label": "구성",
+          "value": "Locker 02 모양 인형 보관함 1개"
         }
       ],
       "saleStatus": "onSale",
@@ -458,7 +386,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "입학 허가서, 학생수첩 포토북, 랜덤 학생증 포토카드"
+          "value": "입학 허가서, 학생수첩 포토북, CD, 랜덤 학생증 포토카드"
         }
       ],
       "saleStatus": "onSale",
@@ -478,12 +406,8 @@
       "description": "단우 컨셉의 크림 커버 버전입니다. 태양 배지 스티커가 포함되어 있습니다.",
       "specifications": [
         {
-          "label": "커버",
-          "value": "크림 (단우 컨셉)"
-        },
-        {
-          "label": "특전",
-          "value": "태양 배지 스티커"
+          "label": "구성",
+          "value": "크림 커버 포토북 (단우 컨셉), CD, 포토카드, 태양 배지 스티커"
         }
       ],
       "saleStatus": "onSale",
@@ -503,12 +427,8 @@
       "description": "상민 컨셉의 블루 커버 버전입니다. 나침반 배지 스티커가 포함되어 있습니다.",
       "specifications": [
         {
-          "label": "커버",
-          "value": "블루 (상민 컨셉)"
-        },
-        {
-          "label": "특전",
-          "value": "나침반 배지 스티커"
+          "label": "구성",
+          "value": "블루 커버 포토북 (상민 컨셉), CD, 포토카드, 나침반 배지 스티커"
         }
       ],
       "saleStatus": "onSale",
@@ -528,12 +448,8 @@
       "description": "옥상 연습실 컨셉의 성장 앨범입니다. 옥상 포스터와 서로에게 쓴 비밀 메모가 동봉되어 있습니다.",
       "specifications": [
         {
-          "label": "컨셉",
-          "value": "옥상 연습실"
-        },
-        {
-          "label": "동봉",
-          "value": "옥상 포스터, 비밀 메모"
+          "label": "구성",
+          "value": "포토북, CD, 옥상 포스터, 서로에게 쓴 비밀 메모, 포토카드"
         }
       ],
       "saleStatus": "onSale",
@@ -553,12 +469,8 @@
       "description": "졸업 무대를 기념하는 한정 앨범입니다. GRADUATION DAY 포토카드 1장이 확정으로 포함됩니다.",
       "specifications": [
         {
-          "label": "구분",
-          "value": "한정판"
-        },
-        {
-          "label": "확정 특전",
-          "value": "GRADUATION DAY 포토카드 1장"
+          "label": "구성",
+          "value": "포토북, CD, GRADUATION DAY 포토카드 1장 (확정)"
         }
       ],
       "saleStatus": "onSale",
@@ -584,7 +496,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "『CLOUD ACADEMY』 앨범, 랜덤 포토카드 팩, 하이스트 로고 키링"
+          "value": "『CLOUD ACADEMY』 앨범, 랜덤 포토카드 팩 (3장), 하이스트 로고 키링"
         }
       ],
       "saleStatus": "onSale",
@@ -641,7 +553,7 @@
       "specifications": [
         {
           "label": "구성",
-          "value": "『HIGHEST DAY』 앨범, 인형 1종 (단우·상민 중 선택)"
+          "value": "『HIGHEST DAY』 앨범, 인형 1종 (단우·상민 중 선택, 스쿨백 포함)"
         }
       ],
       "options": [
